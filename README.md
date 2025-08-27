@@ -11,7 +11,7 @@ A Cloudflare Worker-hosted, Google Nano Banana (Gemini 2.5 Flash Image) image ge
 
 ## 🚀 Quick Start
 
-📺 **Watch the Demo**: [![Video Thumbnail](https://img.youtube.com/vi/cw-YSb4vb1M/maxresdefault.jpg)](https://youtu.be/cw-YSb4vb1M)
+📺 **Watch the Demo with a brief explanation on YouTube**: [![Video Thumbnail](https://img.youtube.com/vi/cw-YSb4vb1M/maxresdefault.jpg)](https://youtu.be/cw-YSb4vb1M)
 
 1. **Clone the repo**
    ```bash
