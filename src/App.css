@@ -1,0 +1,264 @@
+.app {
+  width: 100%;
+  padding: 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  color: #333;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.emoji {
+  margin-right: 8px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.file-drop-zone {
+  position: relative;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fafafa;
+}
+
+.file-drop-zone:hover {
+  border-color: #4285f4;
+  background: #f8f9ff;
+}
+
+.file-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-drop-content {
+  pointer-events: none;
+}
+
+.file-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.file-drop-content p {
+  margin: 0;
+  color: #666;
+}
+
+.image-preview {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.prompt-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+  transition: border-color 0.2s ease;
+}
+
+.prompt-textarea:focus {
+  outline: none;
+  border-color: #4285f4;
+}
+
+.character-count {
+  margin-top: 5px;
+  font-size: 0.8rem;
+  color: #666;
+  text-align: right;
+}
+
+.generate-btn {
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  color: white;
+  border: none;
+  padding: 14px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3367d6, #2d8f47);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
+.generate-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.loading {
+  text-align: center;
+  margin: 30px 0;
+  padding: 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4285f4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #666;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.error-icon {
+  font-size: 1.5rem;
+}
+
+.error-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+}
+
+.error-content p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.result {
+  margin-top: 30px;
+  text-align: center;
+}
+
+.result-title {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+}
+
+.image-container {
+  margin: 20px 0;
+}
+
+.generated-image {
+  max-width: 100%;
+  max-height: 600px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.result-actions {
+  margin-top: 20px;
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #34a853, #4285f4);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.download-btn:hover {
+  background: linear-gradient(135deg, #2d8f47, #3367d6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 168, 83, 0.3);
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: 10px;
+  }
+  
+  .container {
+    padding: 20px;
+  }
+  
+  .title {
+    font-size: 1.5rem;
+  }
+  
+  .preview-image {
+    max-width: 150px;
+    max-height: 150px;
+  }
+}
