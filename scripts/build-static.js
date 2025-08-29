@@ -54,8 +54,18 @@ ${fileEntries}
 export default staticFiles;
 `;
 
-  fs.writeFileSync(outputFile, moduleContent, 'utf-8');
-  console.log(`Generated ${outputFile} with ${Object.keys(files).length} static files`);
+  // Only write if content changed to avoid triggering unnecessary rebuilds
+  let existingContent = '';
+  if (fs.existsSync(outputFile)) {
+    existingContent = fs.readFileSync(outputFile, 'utf-8');
+  }
+  
+  if (existingContent !== moduleContent) {
+    fs.writeFileSync(outputFile, moduleContent, 'utf-8');
+    console.log(`Generated ${outputFile} with ${Object.keys(files).length} static files`);
+  } else {
+    console.log(`${outputFile} unchanged - skipping write`);
+  }
 }
 
 generateStaticFilesModule();

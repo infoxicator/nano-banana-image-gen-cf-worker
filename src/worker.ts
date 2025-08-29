@@ -8,6 +8,48 @@ export interface Env {
 // Import built static files
 import staticFiles from './static-files';
 
+async function fetchImageFromUrl(imageUrl: string): Promise<File> {
+  try {
+    // Validate URL
+    const url = new URL(imageUrl);
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('Only HTTP and HTTPS URLs are supported');
+    }
+    
+    // Fetch the image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    
+    // Check content type
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      throw new Error(`URL does not point to an image. Content-Type: ${contentType}`);
+    }
+    
+    // Get the image data
+    const imageBuffer = await response.arrayBuffer();
+    
+    // Extract filename from URL or use a default
+    const pathname = url.pathname;
+    const filename = pathname.split('/').pop() || 'image';
+    
+    // Create a File object
+    const file = new File([imageBuffer], filename, {
+      type: contentType,
+      lastModified: Date.now()
+    });
+    
+    return file;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch image from URL: ${error.message}`);
+    }
+    throw new Error('Failed to fetch image from URL: Unknown error');
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -35,10 +77,38 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
   // Handle image generation API
   if ((url.pathname === '/api/generate' || url.pathname === '/generate') && request.method === 'POST') {
     try {
-      // Parse multipart form data
-      const formData = await request.formData();
-      const imageFile = formData.get("image");
-      const prompt = formData.get("prompt");
+      const contentType = request.headers.get('content-type') || '';
+      
+      let imageFile: File | null = null;
+      let prompt: string | null = null;
+      
+      // Handle JSON input with image URL
+      if (contentType.includes('application/json')) {
+        const body = await request.json() as { imageUrl?: string; prompt?: string };
+        
+        if (!body.imageUrl || !body.prompt) {
+          return Response.json(
+            { error: "Missing imageUrl or prompt in JSON body" },
+            { status: 400 }
+          );
+        }
+        
+        // Fetch image from URL and convert to File
+        imageFile = await fetchImageFromUrl(body.imageUrl);
+        prompt = body.prompt;
+      }
+      // Handle multipart form data (existing behavior)
+      else if (contentType.includes('multipart/form-data')) {
+        const formData = await request.formData();
+        imageFile = formData.get("image") as File | null;
+        prompt = formData.get("prompt") as string | null;
+      }
+      else {
+        return Response.json(
+          { error: "Content-Type must be application/json or multipart/form-data" },
+          { status: 400 }
+        );
+      }
       
       if (!imageFile || !prompt) {
         return Response.json(
@@ -47,18 +117,8 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         );
       }
       
-      if (typeof imageFile === 'string' || !imageFile) {
-        return Response.json(
-          { error: "Image field must be a file" },
-          { status: 400 }
-        );
-      }
-      
-      // Type assertion after null check
-      const file = imageFile as File;
-      
       // Convert uploaded file to base64
-      const imageBuffer = await file.arrayBuffer();
+      const imageBuffer = await imageFile.arrayBuffer();
       const base64Image = btoa(
         new Uint8Array(imageBuffer).reduce(
           (data, byte) => data + String.fromCharCode(byte),
@@ -76,7 +136,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         { text: prompt },
         {
           inlineData: {
-            mimeType: file.type,
+            mimeType: imageFile.type,
             data: base64Image,
           },
         },

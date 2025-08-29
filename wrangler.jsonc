@@ -17,7 +17,7 @@
 	"r2_buckets": [
 		{
 			"binding": "R2_BUCKET",
-			"bucket_name": "nano-banana-worker"
+			"bucket_name": "nano-banana-flows"
 		}
 	]
 	/**
