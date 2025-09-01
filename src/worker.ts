@@ -74,6 +74,60 @@ export default {
 async function handleApiRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   
+  // Handle image upload API
+  if (url.pathname === '/api/upload' && request.method === 'POST') {
+    try {
+      const formData = await request.formData();
+      const imageFile = formData.get("image") as File | null;
+      
+      if (!imageFile) {
+        return Response.json(
+          { error: "No image file provided" },
+          { status: 400 }
+        );
+      }
+      
+      // Validate file type
+      if (!imageFile.type.startsWith('image/')) {
+        return Response.json(
+          { error: "File must be an image" },
+          { status: 400 }
+        );
+      }
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const extension = imageFile.name.split('.').pop() || 'jpg';
+      const filename = `uploaded-${timestamp}.${extension}`;
+      
+      // Upload to R2
+      const imageBuffer = await imageFile.arrayBuffer();
+      await env.R2_BUCKET.put(filename, imageBuffer, {
+        httpMetadata: {
+          contentType: imageFile.type
+        }
+      });
+      
+      // Return the R2 URL
+      // In production, this would be the public R2 URL
+      // For development, we'll use a placeholder URL that the front-end can work with
+      const imageUrl = `https://pub-277037412cf1440abe75a6d3f69fbe90.r2.dev/${filename}`;
+        
+      return Response.json({
+        success: true,
+        imageUrl: imageUrl,
+        filename: filename
+      });
+      
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      return Response.json(
+        { error: error instanceof Error ? error.message : "Upload failed" },
+        { status: 500 }
+      );
+    }
+  }
+  
   // Handle image generation API
   if ((url.pathname === '/api/generate' || url.pathname === '/generate') && request.method === 'POST') {
     try {
@@ -232,12 +286,17 @@ async function serveStaticFile(pathname: string): Promise<Response | null> {
   // Determine content type
   const contentType = getContentType(filePath);
   
-  return new Response(fileContent, {
-    headers: {
-      'Content-Type': contentType,
-      'Cache-Control': filePath === '/index.html' ? 'no-cache' : 'public, max-age=31536000',
-    },
-  });
+  const headers: Record<string, string> = {
+    'Content-Type': contentType,
+    'Cache-Control': filePath === '/index.html' ? 'no-cache' : 'public, max-age=31536000',
+  };
+
+  // Add relaxed CSP headers for HTML files to allow iframe and image loading
+  if (contentType.includes('text/html')) {
+    headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: *; img-src 'self' data: blob: https: http: *; frame-src 'self' https: http: *; connect-src 'self' https: http: *;";
+  }
+
+  return new Response(fileContent, { headers });
 }
 
 function getContentType(filePath: string): string {

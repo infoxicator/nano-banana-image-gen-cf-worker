@@ -1,16 +1,56 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 
 interface ImageUploadProps {
   onFileSelect: (file: File | null) => void
+  onImageUploaded: (imageUrl: string) => void
   selectedFile: File | null
 }
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, selectedFile }) => {
+const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded, selectedFile }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const uploadFile = async (file: File) => {
+    setIsUploading(true)
+    setUploadError(null)
+    setUploadedImageUrl(null)
+    
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Upload failed')
+      }
+      
+      const data = await response.json()
+      setUploadedImageUrl(data.imageUrl)
+      onImageUploaded(data.imageUrl)
+      
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Upload failed')
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
     onFileSelect(file)
+    if (file) {
+      uploadFile(file)
+    } else {
+      setUploadedImageUrl(null)
+      setUploadError(null)
+    }
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -22,6 +62,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, selectedFile })
     const file = e.dataTransfer.files?.[0] || null
     if (file && file.type.startsWith('image/')) {
       onFileSelect(file)
+      uploadFile(file)
       if (fileInputRef.current) {
         const dt = new DataTransfer()
         dt.items.add(file)
@@ -54,11 +95,16 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, selectedFile })
         <div className="file-drop-content">
           <div className="file-icon">📁</div>
           <p>
-            {selectedFile 
-              ? `Selected: ${selectedFile.name}` 
-              : 'Click to select or drag and drop an image'
+            {isUploading 
+              ? 'Uploading...'
+              : selectedFile 
+                ? `Selected: ${selectedFile.name}` 
+                : 'Click to select or drag and drop an image'
             }
           </p>
+          {isUploading && <div className="upload-progress">⏳ Uploading to cloud...</div>}
+          {uploadError && <div className="upload-error">❌ {uploadError}</div>}
+          {uploadedImageUrl && <div className="upload-success">✅ Image uploaded successfully!</div>}
         </div>
       </div>
       

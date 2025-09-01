@@ -4,29 +4,30 @@
 	"description": "Cloudflare Worker with React frontend for Gemini image generation",
 	"main": "src/worker.ts",
 	"scripts": {
-	  "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:worker\"",
-	  "dev:frontend": "vite",
-	  "dev:worker": "wrangler dev",
-	  "build": "npm run build:frontend && npm run build:static && npm run build:worker",
-	  "build:frontend": "vite build",
-	  "build:static": "node scripts/build-static.js",
-	  "build:worker": "wrangler deploy --dry-run",
-	  "deploy": "npm run build:frontend && npm run build:static && wrangler deploy",
-	  "preview": "vite preview"
+		"dev": "concurrently \"npm run dev:frontend\" \"npm run dev:worker\"",
+		"dev:frontend": "vite",
+		"dev:worker": "wrangler dev",
+		"build": "npm run build:frontend && npm run build:static && npm run build:worker",
+		"build:frontend": "vite build",
+		"build:static": "node scripts/build-static.js",
+		"build:worker": "wrangler deploy --dry-run",
+		"deploy": "npm run build:frontend && npm run build:static && wrangler deploy",
+		"preview": "vite preview"
 	},
 	"dependencies": {
-	  "@google/genai": "^1.15.0",
-	  "react": "^18.2.0",
-	  "react-dom": "^18.2.0"
+		"@google/genai": "^1.15.0",
+		"html2canvas": "^1.4.1",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0"
 	},
 	"devDependencies": {
-	  "@cloudflare/workers-types": "^4.20241218.0",
-	  "@types/react": "^18.2.43",
-	  "@types/react-dom": "^18.2.17",
-	  "@vitejs/plugin-react": "^4.2.1",
-	  "concurrently": "^8.2.2",
-	  "typescript": "^5.6.3",
-	  "vite": "^5.0.8",
-	  "wrangler": "^3.101.0"
+		"@cloudflare/workers-types": "^4.20241218.0",
+		"@types/react": "^18.2.43",
+		"@types/react-dom": "^18.2.17",
+		"@vitejs/plugin-react": "^4.2.1",
+		"concurrently": "^8.2.2",
+		"typescript": "^5.6.3",
+		"vite": "^5.0.8",
+		"wrangler": "^3.101.0"
 	}
-  }
+}

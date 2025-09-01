@@ -13,16 +13,15 @@ const PromptInput: React.FC<PromptInputProps> = ({ value, onChange }) => {
   return (
     <div className="form-group">
       <label htmlFor="prompt" className="label">
-        Describe what you want to create:
+        Additional context (optional):
       </label>
       <textarea
         id="prompt"
         value={value}
         onChange={handleChange}
-        placeholder="Create a picture of my cat eating a nano-banana in a fancy restaurant under the Gemini constellation"
+        placeholder="Describe any specific details you'd like to see in your historical journey..."
         className="prompt-textarea"
-        rows={4}
-        required
+        rows={3}
       />
       <div className="character-count">
         {value.length} characters
