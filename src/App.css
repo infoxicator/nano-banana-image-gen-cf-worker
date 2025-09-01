@@ -538,6 +538,8 @@ body {
 }
 
 .generated-html {
+  color: black;
+  background-color: white;
   width: 100%;
   min-height: 400px;
   padding: 20px;
@@ -623,6 +625,52 @@ body {
     padding: 15px;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    font-size: 14px !important;
+  }
+  
+  /* Force mobile-responsive styles on generated HTML content */
+  .generated-html * {
+    max-width: 100% !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    box-sizing: border-box !important;
+  }
+  
+  .generated-html h1,
+  .generated-html h2,
+  .generated-html h3,
+  .generated-html h4,
+  .generated-html h5,
+  .generated-html h6 {
+    font-size: clamp(1rem, 4vw, 2rem) !important;
+    line-height: 1.2 !important;
+    margin: 0.5em 0 !important;
+  }
+  
+  .generated-html p {
+    font-size: clamp(0.8rem, 2.5vw, 1rem) !important;
+    line-height: 1.4 !important;
+    margin: 0.5em 0 !important;
+  }
+  
+  .generated-html img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0.5em auto !important;
+  }
+  
+  .generated-html table {
+    width: 100% !important;
+    font-size: 0.8rem !important;
+    border-collapse: collapse !important;
+  }
+  
+  .generated-html td,
+  .generated-html th {
+    padding: 4px !important;
+    font-size: 0.75rem !important;
+    word-wrap: break-word !important;
   }
   
   .newspaper-header {
@@ -692,5 +740,41 @@ body {
   
   .step-content {
     font-size: 0.95rem;
+  }
+}
+
+/* Extra small screens (phones in portrait, less than 480px) */
+@media (max-width: 479px) {
+  .html-content-container {
+    margin: 0 -10px;
+  }
+  
+  .generated-html {
+    padding: 10px;
+    font-size: 12px !important;
+  }
+  
+  .generated-html h1 {
+    font-size: clamp(0.9rem, 5vw, 1.5rem) !important;
+  }
+  
+  .generated-html h2,
+  .generated-html h3 {
+    font-size: clamp(0.8rem, 4vw, 1.2rem) !important;
+  }
+  
+  .generated-html p {
+    font-size: clamp(0.7rem, 3vw, 0.9rem) !important;
+    line-height: 1.3 !important;
+  }
+  
+  .generated-html table {
+    font-size: 0.6rem !important;
+  }
+  
+  .generated-html td,
+  .generated-html th {
+    padding: 2px !important;
+    font-size: 0.6rem !important;
   }
 }
