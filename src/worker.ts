@@ -219,32 +219,37 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
           const timestamp = Date.now();
           const filename = `generated-${timestamp}.png`;
           
-          // Upload to R2
-          try {
-            await env.R2_BUCKET.put(filename, part.inlineData.data, {
-              httpMetadata: {
-                contentType: part.inlineData.mimeType || "image/png"
-              }
-            });
+          // // Upload to R2
+          // try {
+          //   await env.R2_BUCKET.put(filename, part.inlineData.data, {
+          //     httpMetadata: {
+          //       contentType: part.inlineData.mimeType || "image/png"
+          //     }
+          //   });
             
-            // Return success with R2 URL
-            return Response.json({
-              success: true,
-              imageData: part.inlineData.data,
-              mimeType: part.inlineData.mimeType || "image/png",
-              r2Url: filename,
-              message: "Image generated and saved to R2"
-            });
-          } catch (r2Error) {
-            console.error("R2 upload failed:", r2Error);
-            // Still return the image data even if R2 upload fails
-            return Response.json({
-              success: true,
-              imageData: part.inlineData.data,
-              mimeType: part.inlineData.mimeType || "image/png",
-              warning: "Image generated but R2 upload failed"
-            });
-          }
+          //   // Return success with R2 URL
+          //   return Response.json({
+          //     success: true,
+          //     imageData: part.inlineData.data,
+          //     mimeType: part.inlineData.mimeType || "image/png",
+          //     r2Url: filename,
+          //     message: "Image generated and saved to R2"
+          //   });
+          // } catch (r2Error) {
+          //   console.error("R2 upload failed:", r2Error);
+          //   // Still return the image data even if R2 upload fails
+          //   return Response.json({
+          //     success: true,
+          //     imageData: part.inlineData.data,
+          //     mimeType: part.inlineData.mimeType || "image/png",
+          //     warning: "Image generated but R2 upload failed"
+          //   });
+          // }
+          return Response.json({
+            success: true,
+            imageData: part.inlineData.data,
+            mimeType: part.inlineData.mimeType || "image/png",
+          });
         }
       }
       
