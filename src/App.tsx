@@ -43,6 +43,8 @@ function App() {
   const [result, setResult] = useState<GenerationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [sharedImageUrl, setSharedImageUrl] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   
   const htmlContentRef = useRef<HTMLDivElement>(null)
 
@@ -110,6 +112,126 @@ function App() {
     }
   }
 
+  const uploadImageForSharing = async (): Promise<string | null> => {
+    if (!htmlContentRef.current) return null
+
+    setIsUploading(true)
+    try {
+      // Generate image using html2canvas
+      const canvas = await html2canvas(htmlContentRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher quality
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+      })
+
+      // Convert canvas to blob
+      return new Promise((resolve) => {
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            resolve(null)
+            return
+          }
+
+          try {
+            // Create form data
+            const formData = new FormData()
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')
+            const filename = `newspaper-${selectedDate || 'generated'}-${timestamp}.png`
+            formData.append('image', blob, filename)
+
+            // Upload to R2
+            const response = await fetch('/api/upload-generated', {
+              method: 'POST',
+              body: formData
+            })
+
+            if (!response.ok) {
+              throw new Error('Failed to upload image')
+            }
+
+            const data = await response.json() as { imageUrl: string; success: boolean; message?: string }
+            resolve(data.imageUrl)
+          } catch (error) {
+            console.error('Error uploading image:', error)
+            resolve(null)
+          }
+        }, 'image/png')
+      })
+    } catch (error) {
+      console.error('Error generating image for sharing:', error)
+      return null
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleShareFacebook = async () => {
+    // Get or upload the image URL
+    let imageUrl = sharedImageUrl
+    if (!imageUrl) {
+      imageUrl = await uploadImageForSharing()
+      if (imageUrl) {
+        setSharedImageUrl(imageUrl)
+      }
+    }
+
+    if (!imageUrl) {
+      alert('Failed to prepare image for sharing. Please try again.')
+      return
+    }
+
+    const text = encodeURIComponent(`Check out this newspaper from my Ai Time Travel journey: ${imageUrl}`)
+    const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(imageUrl)}&quote=${text}`
+    window.open(shareUrl, '_blank', 'width=600,height=400')
+  }
+
+  const handleShareTwitter = async () => {
+    // Get or upload the image URL
+    let imageUrl = sharedImageUrl
+    if (!imageUrl) {
+      imageUrl = await uploadImageForSharing()
+      if (imageUrl) {
+        setSharedImageUrl(imageUrl)
+      }
+    }
+
+    if (!imageUrl) {
+      alert('Failed to prepare image for sharing. Please try again.')
+      return
+    }
+
+    const text = encodeURIComponent(`Check out this newspaper from my Ai Time Travel journey 📰✨`)
+    const shareUrl = `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(imageUrl)}`
+    window.open(shareUrl, '_blank', 'width=600,height=400')
+  }
+
+  const handleShareInstagram = async () => {
+    // Get or upload the image URL
+    let imageUrl = sharedImageUrl
+    if (!imageUrl) {
+      imageUrl = await uploadImageForSharing()
+      if (imageUrl) {
+        setSharedImageUrl(imageUrl)
+      }
+    }
+
+    if (!imageUrl) {
+      alert('Failed to prepare image for sharing. Please try again.')
+      return
+    }
+
+    try {
+      const message = `Check out this newspaper from my Ai Time Travel journey 📰✨\n\nDownload the image from: ${imageUrl}`
+      await navigator.clipboard.writeText(message)
+      alert('Image link and caption copied to clipboard! Open Instagram and paste it in your story or post.')
+    } catch (err) {
+      console.error('Failed to copy link:', err)
+      alert(`Please copy this manually:\n\n${imageUrl}\n\nAnd use this caption: "Check out this newspaper from my Ai Time Travel journey 📰✨"`)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -121,6 +243,7 @@ function App() {
     setIsLoading(true)
     setError(null)
     setResult(null)
+    setSharedImageUrl(null) // Clear previous shared image URL
 
     try {
       const response = await fetch('https://postman.flows.pstmn.io/api/default/nano-banana', {
@@ -136,7 +259,7 @@ function App() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json() as { error?: string }
         throw new Error(errorData.error || 'Failed to process request')
       }
 
@@ -256,6 +379,45 @@ function App() {
               >
                 {isDownloading ? '📸 Capturing...' : '📥 Download as Image'}
               </button>
+              
+              <div className="share-buttons">
+                <h4 className="share-title">Share your creation:</h4>
+                <div className="share-buttons-row">
+                  <button 
+                    onClick={handleShareFacebook}
+                    className="share-btn facebook-btn"
+                    type="button"
+                    disabled={isUploading}
+                  >
+                    <span className="share-icon">
+                      {isUploading ? '⏳' : '📘'}
+                    </span>
+                    {isUploading ? 'Preparing...' : 'Facebook'}
+                  </button>
+                  <button 
+                    onClick={handleShareTwitter}
+                    className="share-btn twitter-btn"
+                    type="button"
+                    disabled={isUploading}
+                  >
+                    <span className="share-icon">
+                      {isUploading ? '⏳' : '🐦'}
+                    </span>
+                    {isUploading ? 'Preparing...' : 'X (Twitter)'}
+                  </button>
+                  <button 
+                    onClick={handleShareInstagram}
+                    className="share-btn instagram-btn"
+                    type="button"
+                    disabled={isUploading}
+                  >
+                    <span className="share-icon">
+                      {isUploading ? '⏳' : '📸'}
+                    </span>
+                    {isUploading ? 'Preparing...' : 'Instagram'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

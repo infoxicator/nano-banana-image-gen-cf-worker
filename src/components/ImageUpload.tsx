@@ -27,11 +27,11 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json() as { error?: string }
         throw new Error(errorData.error || 'Upload failed')
       }
       
-      const data = await response.json()
+      const data = await response.json() as { imageUrl: string; success: boolean }
       setUploadedImageUrl(data.imageUrl)
       onImageUploaded(data.imageUrl)
       

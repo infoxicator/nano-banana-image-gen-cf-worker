@@ -28,8 +28,8 @@ const MonthDayPicker: React.FC<MonthDayPickerProps> = ({ value, onChange }) => {
   useEffect(() => {
     if (value && value.includes('/')) {
       const [monthStr, dayStr] = value.split('/')
-      const monthNum = parseInt(monthStr, 10)
-      const dayNum = parseInt(dayStr, 10)
+      const monthNum = parseInt(monthStr || '0', 10)
+      const dayNum = parseInt(dayStr || '0', 10)
       if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
         setMonth(monthNum)
         setDay(dayNum)

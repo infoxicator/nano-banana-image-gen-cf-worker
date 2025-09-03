@@ -74,6 +74,61 @@ export default {
 async function handleApiRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   
+  // Handle generated image upload API for sharing
+  if (url.pathname === '/api/upload-generated' && request.method === 'POST') {
+    try {
+      const formData = await request.formData();
+      const imageFile = formData.get("image") as File | null;
+      
+      if (!imageFile) {
+        return Response.json(
+          { error: "No image file provided" },
+          { status: 400 }
+        );
+      }
+      
+      // Validate file type
+      if (!imageFile.type.startsWith('image/')) {
+        return Response.json(
+          { error: "File must be an image" },
+          { status: 400 }
+        );
+      }
+      
+      // Generate unique filename for sharing
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const extension = imageFile.name.split('.').pop() || 'png';
+      const filename = `shared-newspaper-${timestamp}-${randomId}.${extension}`;
+      
+      // Upload to R2
+      const imageBuffer = await imageFile.arrayBuffer();
+      await env.R2_BUCKET.put(filename, imageBuffer, {
+        httpMetadata: {
+          contentType: imageFile.type,
+          cacheControl: 'public, max-age=31536000', // Cache for 1 year
+        }
+      });
+      
+      // Return the public R2 URL
+      const imageUrl = `https://pub-277037412cf1440abe75a6d3f69fbe90.r2.dev/${filename}`;
+        
+      return Response.json({
+        success: true,
+        imageUrl: imageUrl,
+        filename: filename,
+        message: "Image uploaded and ready for sharing"
+      });
+      
+    } catch (error) {
+      console.error("Error uploading generated image:", error);
+      return Response.json(
+        { error: error instanceof Error ? error.message : "Upload failed" },
+        { status: 500 }
+      );
+    }
+  }
+  
   // Handle image upload API
   if (url.pathname === '/api/upload' && request.method === 'POST') {
     try {
