@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLanguage } from '../i18n'
 
 interface MonthDayPickerProps {
   value: string
@@ -6,22 +7,23 @@ interface MonthDayPickerProps {
 }
 
 const MonthDayPicker: React.FC<MonthDayPickerProps> = ({ value, onChange }) => {
+  const { t } = useLanguage()
   const [month, setMonth] = useState<number>(0)
   const [day, setDay] = useState<number>(0)
 
   const months = [
-    { value: 1, label: 'January' },
-    { value: 2, label: 'February' },
-    { value: 3, label: 'March' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'May' },
-    { value: 6, label: 'June' },
-    { value: 7, label: 'July' },
-    { value: 8, label: 'August' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'October' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'December' }
+    { value: 1, label: t.months.january },
+    { value: 2, label: t.months.february },
+    { value: 3, label: t.months.march },
+    { value: 4, label: t.months.april },
+    { value: 5, label: t.months.may },
+    { value: 6, label: t.months.june },
+    { value: 7, label: t.months.july },
+    { value: 8, label: t.months.august },
+    { value: 9, label: t.months.september },
+    { value: 10, label: t.months.october },
+    { value: 11, label: t.months.november },
+    { value: 12, label: t.months.december }
   ]
 
   // Parse initial value
@@ -77,7 +79,7 @@ const MonthDayPicker: React.FC<MonthDayPickerProps> = ({ value, onChange }) => {
   return (
     <div className="form-group">
       <label className="label">
-        Select Date (Month/Day):
+        {t.datePickerLabel}
       </label>
       
       <div className="date-picker-container">
@@ -87,7 +89,7 @@ const MonthDayPicker: React.FC<MonthDayPickerProps> = ({ value, onChange }) => {
           onChange={handleMonthChange}
           required
         >
-          <option value={0}>Select Month</option>
+          <option value={0}>{t.datePickerMonthPlaceholder}</option>
           {months.map((monthOption) => (
             <option key={monthOption.value} value={monthOption.value}>
               {monthOption.label}
@@ -102,7 +104,7 @@ const MonthDayPicker: React.FC<MonthDayPickerProps> = ({ value, onChange }) => {
           disabled={month === 0}
           required
         >
-          <option value={0}>Select Day</option>
+          <option value={0}>{t.datePickerDayPlaceholder}</option>
           {dayOptions.map((dayNum) => (
             <option key={dayNum} value={dayNum}>
               {dayNum}
@@ -110,12 +112,6 @@ const MonthDayPicker: React.FC<MonthDayPickerProps> = ({ value, onChange }) => {
           ))}
         </select>
       </div>
-      
-      {/* {value && (
-        <div className="selected-date">
-          Selected: {value}
-        </div>
-      )} */}
     </div>
   )
 }

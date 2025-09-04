@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react'
+import { useLanguage } from '../i18n'
 
 interface ImageUploadProps {
   onFileSelect: (file: File | null) => void
@@ -7,6 +8,7 @@ interface ImageUploadProps {
 }
 
 const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded, selectedFile }) => {
+  const { t } = useLanguage()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
@@ -28,7 +30,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded
       
       if (!response.ok) {
         const errorData = await response.json() as { error?: string }
-        throw new Error(errorData.error || 'Upload failed')
+        throw new Error(errorData.error || t.errorFailedToUpload)
       }
       
       const data = await response.json() as { imageUrl: string; success: boolean }
@@ -36,7 +38,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded
       onImageUploaded(data.imageUrl)
       
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'Upload failed')
+      setUploadError(error instanceof Error ? error.message : t.imageUploadError)
     } finally {
       setIsUploading(false)
     }
@@ -74,7 +76,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded
   return (
     <div className="form-group">
       <label htmlFor="imageFile" className="label">
-        Upload an image:
+        {t.imageUploadLabel}
       </label>
       
       <div 
@@ -96,13 +98,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded
           <div className="file-icon">📁</div>
           <p>
             {isUploading 
-              ? 'Uploading...'
+              ? t.imageUploading
               : selectedFile 
                 ? `Selected: ${selectedFile.name}` 
-                : 'Click to select or drag and drop an image'
+                : t.imageUploadInstruction
             }
           </p>
-          {isUploading && <div className="upload-progress">⏳ Uploading to cloud...</div>}
+          {isUploading && <div className="upload-progress">⏳ {t.imageUploading}</div>}
           {uploadError && <div className="upload-error">❌ {uploadError}</div>}
           {uploadedImageUrl && <div className="upload-success">✅ Image uploaded successfully!</div>}
         </div>

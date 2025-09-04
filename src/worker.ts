@@ -99,7 +99,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
       const extension = imageFile.name.split('.').pop() || 'png';
-      const filename = `shared-newspaper-${timestamp}-${randomId}.${extension}`;
+      const filename = `my-ai-time-travel-newspaper-${timestamp}-${randomId}.${extension}`;
       
       // Upload to R2
       const imageBuffer = await imageFile.arrayBuffer();
@@ -111,7 +111,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
       });
       
       // Return the public R2 URL
-      const imageUrl = `https://pub-277037412cf1440abe75a6d3f69fbe90.r2.dev/${filename}`;
+      const imageUrl = `https://images.iwasthere.today/${filename}`;
         
       return Response.json({
         success: true,
@@ -166,7 +166,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
       // Return the R2 URL
       // In production, this would be the public R2 URL
       // For development, we'll use a placeholder URL that the front-end can work with
-      const imageUrl = `https://pub-277037412cf1440abe75a6d3f69fbe90.r2.dev/${filename}`;
+      const imageUrl = `https://images.iwasthere.today/${filename}`;
         
       return Response.json({
         success: true,

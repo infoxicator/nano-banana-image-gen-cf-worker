@@ -5,6 +5,8 @@ import PromptInput from './components/PromptInput'
 import MonthDayPicker from './components/MonthDayPicker'
 import LoadingSpinner from './components/LoadingSpinner'
 import ErrorMessage from './components/ErrorMessage'
+import LanguageToggle from './components/LanguageToggle'
+import { useLanguage } from './i18n'
 import './App.css'
 
 interface GenerationResult {
@@ -35,6 +37,8 @@ const sanitizeHtmlContent = (htmlString: string): string => {
 };
 
 function App() {
+  const { t } = useLanguage()
+  
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('')
   const [prompt, setPrompt] = useState('')
@@ -178,11 +182,11 @@ function App() {
     }
 
     if (!imageUrl) {
-      alert('Failed to prepare image for sharing. Please try again.')
+      alert(t.errorFailedToPrepareSharing)
       return
     }
 
-    const text = encodeURIComponent(`Check out this newspaper from my Ai Time Travel journey: ${imageUrl}`)
+    const text = encodeURIComponent(`${t.facebookShareText} ${imageUrl}`)
     const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(imageUrl)}&quote=${text}`
     window.open(shareUrl, '_blank', 'width=600,height=400')
   }
@@ -198,11 +202,11 @@ function App() {
     }
 
     if (!imageUrl) {
-      alert('Failed to prepare image for sharing. Please try again.')
+      alert(t.errorFailedToPrepareSharing)
       return
     }
 
-    const text = encodeURIComponent(`Check out this newspaper from my Ai Time Travel journey 📰✨`)
+    const text = encodeURIComponent(t.twitterShareText)
     const shareUrl = `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(imageUrl)}`
     window.open(shareUrl, '_blank', 'width=600,height=400')
   }
@@ -218,17 +222,17 @@ function App() {
     }
 
     if (!imageUrl) {
-      alert('Failed to prepare image for sharing. Please try again.')
+      alert(t.errorFailedToPrepareSharing)
       return
     }
 
     try {
-      const message = `Check out this newspaper from my Ai Time Travel journey 📰✨\n\nDownload the image from: ${imageUrl}`
+      const message = `${t.instagramShareMessage} ${imageUrl}`
       await navigator.clipboard.writeText(message)
-      alert('Image link and caption copied to clipboard! Open Instagram and paste it in your story or post.')
+      alert(t.instagramShareSuccess)
     } catch (err) {
       console.error('Failed to copy link:', err)
-      alert(`Please copy this manually:\n\n${imageUrl}\n\nAnd use this caption: "Check out this newspaper from my Ai Time Travel journey 📰✨"`)
+      alert(`${t.instagramShareFallback}\n\n${imageUrl}\n\n${t.instagramShareMessage.split('\n')[0]}`)
     }
   }
 
@@ -236,7 +240,7 @@ function App() {
     e.preventDefault()
     
     if (!uploadedImageUrl || !selectedDate) {
-      setError('Please upload an image and select a date.')
+      setError(t.errorSelectDateAndImage)
       return
     }
 
@@ -260,7 +264,7 @@ function App() {
 
       if (!response.ok) {
         const errorData = await response.json() as { error?: string }
-        throw new Error(errorData.error || 'Failed to process request')
+        throw new Error(errorData.error || t.errorFailedToProcess)
       }
 
       const rawHtmlContent = await response.text()
@@ -273,7 +277,7 @@ function App() {
       
     } catch (err) {
       console.error('Error processing request:', err)
-      setError(err instanceof Error ? err.message : 'An unknown error occurred')
+      setError(err instanceof Error ? err.message : t.errorUnknown)
     } finally {
       setIsLoading(false)
     }
@@ -283,37 +287,38 @@ function App() {
     <div className="app">
       <div className="newspaper-container">
         <header className="newspaper-header">
+          <LanguageToggle />
           <div className="masthead">
-            <h1 className="newspaper-title">I Was There!</h1>
+            <h1 className="newspaper-title">{t.title}</h1>
             <div className="newspaper-subtitle">
-              Upload a picture and select the date to be transported to that place in history
+              {t.subtitle}
             </div>
             <div className="newspaper-divider"></div>
             <div className="instructions">
-              <h3 className="instructions-title">How This Time Machine Works:</h3>
+              <h3 className="instructions-title">{t.instructionsTitle}</h3>
               <div className="instructions-content">
                 <div className="instruction-step">
                   <span className="step-number">1</span>
                   <div className="step-content">
-                    <strong>Choose Your Date:</strong> Select any month and day from history. This will be your destination in time - the exact moment you'll experience through your photograph.
+                    <strong>{t.step1Title}</strong> {t.step1Description}
                   </div>
                 </div>
                 <div className="instruction-step">
                   <span className="step-number">2</span>
                   <div className="step-content">
-                    <strong>Upload Your Photograph:</strong> Share any image that holds meaning for you. Our AI will transport this image back to your chosen historical date, reimagining how it would appear in that era.
+                    <strong>{t.step2Title}</strong> {t.step2Description}
                   </div>
                 </div>
                 <div className="instruction-step">
                   <span className="step-number">3</span>
                   <div className="step-content">
-                    <strong>Add Context (Optional):</strong> Describe any specific historical elements, atmosphere, or details you'd like to see incorporated into your time-traveled image.
+                    <strong>{t.step3Title}</strong> {t.step3Description}
                   </div>
                 </div>
                 <div className="instruction-step">
                   <span className="step-number">4</span>
                   <div className="step-content">
-                    <strong>Begin Your Journey:</strong> Click the time travel button and watch as your modern photograph transforms into a historical scene from your chosen date.
+                    <strong>{t.step4Title}</strong> {t.step4Description}
                   </div>
                 </div>
               </div>
@@ -350,7 +355,7 @@ function App() {
               className="newspaper-btn"
               disabled={isLoading || !uploadedImageUrl || !selectedDate}
             >
-              {isLoading ? 'Time Traveling...' : 'Transport Me Back in Time!'}
+              {isLoading ? t.submitButtonLoading : t.submitButton}
             </button>
           </div>
         </form>
@@ -363,7 +368,7 @@ function App() {
           <div className="result">
             <h3 className="result-title">
               <span className="emoji">✨</span>
-              Here's Your Newspaper Frontpage:
+              {t.resultTitle}
             </h3>
             <div className="html-content-container" ref={htmlContentRef}>
               <div
@@ -377,11 +382,11 @@ function App() {
                 className="download-btn"
                 disabled={isDownloading}
               >
-                {isDownloading ? '📸 Capturing...' : '📥 Download as Image'}
+                {isDownloading ? t.downloadButtonLoading : t.downloadButton}
               </button>
               
               <div className="share-buttons">
-                <h4 className="share-title">Share your creation:</h4>
+                <h4 className="share-title">{t.shareTitle}</h4>
                 <div className="share-buttons-row">
                   <button 
                     onClick={handleShareFacebook}
@@ -392,7 +397,7 @@ function App() {
                     <span className="share-icon">
                       {isUploading ? '⏳' : '📘'}
                     </span>
-                    {isUploading ? 'Preparing...' : 'Facebook'}
+                    {isUploading ? t.shareButtonLoading : t.facebookButton}
                   </button>
                   <button 
                     onClick={handleShareTwitter}
@@ -403,7 +408,7 @@ function App() {
                     <span className="share-icon">
                       {isUploading ? '⏳' : '🐦'}
                     </span>
-                    {isUploading ? 'Preparing...' : 'X (Twitter)'}
+                    {isUploading ? t.shareButtonLoading : t.twitterButton}
                   </button>
                   <button 
                     onClick={handleShareInstagram}
@@ -414,7 +419,7 @@ function App() {
                     <span className="share-icon">
                       {isUploading ? '⏳' : '📸'}
                     </span>
-                    {isUploading ? 'Preparing...' : 'Instagram'}
+                    {isUploading ? t.shareButtonLoading : t.instagramButton}
                   </button>
                 </div>
               </div>

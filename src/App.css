@@ -69,6 +69,64 @@ body {
   z-index: 2;
 }
 
+/* Language Toggle */
+.language-toggle {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  z-index: 10;
+}
+
+.language-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #333;
+  border-radius: 25px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-family: 'Crimson Text', serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.language-toggle-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.language-flag {
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+.language-text {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 768px) {
+  .language-toggle {
+    top: 15px;
+    right: 15px;
+  }
+  
+  .language-toggle-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .language-flag {
+    font-size: 1em;
+  }
+}
+
 .masthead {
   text-align: center;
 }

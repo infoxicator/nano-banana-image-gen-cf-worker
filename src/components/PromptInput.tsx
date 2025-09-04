@@ -1,4 +1,5 @@
 import React from 'react'
+import { useLanguage } from '../i18n'
 
 interface PromptInputProps {
   value: string
@@ -6,6 +7,7 @@ interface PromptInputProps {
 }
 
 const PromptInput: React.FC<PromptInputProps> = ({ value, onChange }) => {
+  const { t } = useLanguage()
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value)
   }
@@ -13,18 +15,18 @@ const PromptInput: React.FC<PromptInputProps> = ({ value, onChange }) => {
   return (
     <div className="form-group">
       <label htmlFor="prompt" className="label">
-        Additional context (optional):
+        {t.promptLabel}
       </label>
       <textarea
         id="prompt"
         value={value}
         onChange={handleChange}
-        placeholder="Describe any specific details you'd like to see in your historical journey..."
+        placeholder={t.promptPlaceholder}
         className="prompt-textarea"
         rows={3}
       />
       <div className="character-count">
-        {value.length} characters
+        {value.length} {t.charactersLabel}
       </div>
     </div>
   )
