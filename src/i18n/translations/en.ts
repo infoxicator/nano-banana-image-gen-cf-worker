@@ -52,6 +52,9 @@ export const en = {
   downloadButton: "📥 Download as Image",
   downloadButtonLoading: "📸 Capturing...",
   
+  // Loading
+  loadingMessage: "Generating your image... This will take about 30 seconds.",
+  
   // Share buttons
   shareTitle: "Share your creation:",
   facebookButton: "Facebook",

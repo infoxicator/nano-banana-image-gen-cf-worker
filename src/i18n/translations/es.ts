@@ -54,6 +54,9 @@ export const es: TranslationKeys = {
   downloadButton: "📥 Descargar como Imagen",
   downloadButtonLoading: "📸 Capturando...",
   
+  // Loading
+  loadingMessage: "Generando tu imagen... Esto tomará aproximadamente 30 segundos.",
+  
   // Share buttons
   shareTitle: "Comparte tu creación:",
   facebookButton: "Facebook",
