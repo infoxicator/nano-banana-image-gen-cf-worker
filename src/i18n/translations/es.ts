@@ -41,6 +41,8 @@ export const es: TranslationKeys = {
   imageUploadInstruction: "Haz clic para subir o arrastra y suelta tu imagen",
   imageUploading: "Subiendo imagen...",
   imageUploadError: "Error al subir la imagen. Por favor, intenta de nuevo.",
+  imageSelected: "Seleccionado",
+  imageUploadSuccess: "¡Imagen subida exitosamente!",
   
   promptLabel: "Contexto adicional (opcional):",
   promptPlaceholder: "Describe cualquier detalle específico que te gustaría ver en tu viaje histórico...",

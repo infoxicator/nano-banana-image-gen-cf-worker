@@ -377,7 +377,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         } else if (error.message.includes('Invalid response structure')) {
           errorMessage = "The AI service returned an unexpected response format. Please try again.";
           statusCode = 502; // Bad Gateway
-        } else if (error.message.includes('No HTML content generated')) {
+        } else if (error.message.includes('No inline image content')) {
           errorMessage = "The AI service could not generate content. Please try with a different image or prompt.";
           statusCode = 422; // Unprocessable Entity
         } else if (error.message.includes('fetch')) {

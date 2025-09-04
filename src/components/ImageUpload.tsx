@@ -100,13 +100,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded
             {isUploading 
               ? t.imageUploading
               : selectedFile 
-                ? `Selected: ${selectedFile.name}` 
+                ? `${t.imageSelected}: ${selectedFile.name}` 
                 : t.imageUploadInstruction
             }
           </p>
           {isUploading && <div className="upload-progress">⏳ {t.imageUploading}</div>}
           {uploadError && <div className="upload-error">❌ {uploadError}</div>}
-          {uploadedImageUrl && <div className="upload-success">✅ Image uploaded successfully!</div>}
+          {uploadedImageUrl && <div className="upload-success">✅ {t.imageUploadSuccess}</div>}
         </div>
       </div>
       

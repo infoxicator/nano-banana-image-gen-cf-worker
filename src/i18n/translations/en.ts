@@ -39,6 +39,8 @@ export const en = {
   imageUploadInstruction: "Click to upload or drag and drop your image",
   imageUploading: "Uploading image...",
   imageUploadError: "Failed to upload image. Please try again.",
+  imageSelected: "Selected",
+  imageUploadSuccess: "Image uploaded successfully!",
   
   promptLabel: "Additional context (optional):",
   promptPlaceholder: "Describe any specific details you'd like to see in your historical journey...",

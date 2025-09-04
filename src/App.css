@@ -258,19 +258,7 @@ body {
   position: relative;
 }
 
-.date-section::before {
-  content: "SELECT YOUR DATE";
-  position: absolute;
-  top: -12px;
-  left: 20px;
-  background: white;
-  padding: 0 10px;
-  font-family: 'Playfair Display', serif;
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #333;
-  letter-spacing: 1px;
-}
+/* Removed hardcoded SELECT YOUR DATE label - now using translatable label in component */
 
 .image-section {
   margin-bottom: 40px;
@@ -279,19 +267,7 @@ body {
   position: relative;
 }
 
-.image-section::before {
-  content: "PHOTOGRAPH";
-  position: absolute;
-  left: -2px;
-  top: -10px;
-  background: #333;
-  color: white;
-  padding: 5px 15px;
-  font-family: 'Playfair Display', serif;
-  font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 1px;
-}
+/* Removed hardcoded PHOTOGRAPH label - now using translatable label in component */
 
 .prompt-section {
   margin-bottom: 40px;
@@ -559,6 +535,92 @@ body {
   font-family: 'Crimson Text', serif;
   font-size: 1.1rem;
   font-weight: 600;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.error-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.error-content {
+  flex: 1;
+}
+
+.error-content h4 {
+  margin: 0 0 10px 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.user-message {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.error-actions {
+  margin: 15px 0;
+}
+
+.toggle-details-btn {
+  background: #cc0000;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  font-family: 'Crimson Text', serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-details-btn:hover {
+  background: #aa0000;
+}
+
+.technical-details {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #cc0000;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.detail-section {
+  margin-bottom: 15px;
+}
+
+.detail-section h5 {
+  margin: 0 0 8px 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #cc0000;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.detail-section p {
+  margin: 0 0 5px 0;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.detail-section strong {
+  color: #333;
+}
+
+.headers-list {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.8rem;
 }
 
 .result {
@@ -852,11 +914,34 @@ body {
   }
   
   .newspaper-header {
-    padding: 20px;
+    padding: 15px 15px 25px 15px;
+  }
+  
+  .language-toggle {
+    top: 10px;
+    right: 15px;
+  }
+  
+  .language-toggle-btn {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+  }
+  
+  .masthead {
+    margin-top: 30px;
   }
   
   .newspaper-title {
-    font-size: 2rem;
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+    margin: 0 0 12px;
+    word-spacing: -0.2em;
+  }
+  
+  .newspaper-title::before,
+  .newspaper-title::after {
+    margin: 0 8px;
+    font-size: 0.5em;
   }
   
   .newspaper-subtitle {
@@ -881,12 +966,7 @@ body {
     font-size: 1rem;
   }
   
-  .image-section::before {
-    position: static;
-    display: block;
-    margin-bottom: 10px;
-    padding: 10px;
-  }
+  /* Removed pseudo-element styles since we're using component label now */
   
   .image-section {
     border-left: none;

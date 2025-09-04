@@ -15,6 +15,22 @@ interface GenerationResult {
   error?: string;
 }
 
+interface DetailedError {
+  userMessage: string;
+  technicalDetails: {
+    error: string;
+    details: string;
+    timestamp: string;
+    requestInfo: {
+      language: string;
+      hasDate: boolean;
+      hasPrompt: boolean;
+    };
+    httpStatus: number;
+    httpHeaders?: Record<string, string>;
+  };
+}
+
 // Function to sanitize HTML content by removing markdown code blocks and escape characters
 const sanitizeHtmlContent = (htmlString: string): string => {
   let cleaned = htmlString;
@@ -36,6 +52,45 @@ const sanitizeHtmlContent = (htmlString: string): string => {
   return cleaned;
 };
 
+// Function to get user-friendly error messages
+const getUserFriendlyErrorMessage = (errorMessage: string, language: string): string => {
+  const translations = {
+    en: {
+      aiServiceError: "The AI service encountered an issue. Please try again with a different image or prompt.",
+      networkError: "Network connection issue. Please check your internet connection and try again.",
+      imageError: "There was a problem processing your image. Please try uploading a different image.",
+      serverError: "Our servers are experiencing issues. Please try again in a few minutes.",
+      invalidRequest: "There was an issue with your request. Please check your inputs and try again.",
+      default: "Something went wrong. Please try again."
+    },
+    es: {
+      aiServiceError: "El servicio de IA encontró un problema. Por favor, inténtalo de nuevo con una imagen o descripción diferente.",
+      networkError: "Problema de conexión de red. Por favor, verifica tu conexión a internet e inténtalo de nuevo.",
+      imageError: "Hubo un problema procesando tu imagen. Por favor, intenta subir una imagen diferente.",
+      serverError: "Nuestros servidores están experimentando problemas. Por favor, inténtalo de nuevo en unos minutos.",
+      invalidRequest: "Hubo un problema con tu solicitud. Por favor, verifica tus datos e inténtalo de nuevo.",
+      default: "Algo salió mal. Por favor, inténtalo de nuevo."
+    }
+  };
+
+  const lang = language as 'en' | 'es';
+  const t = translations[lang] || translations.en;
+
+  if (errorMessage.includes('AI service') || errorMessage.includes('generate')) {
+    return t.aiServiceError;
+  } else if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+    return t.networkError;
+  } else if (errorMessage.includes('image')) {
+    return t.imageError;
+  } else if (errorMessage.includes('server') || errorMessage.includes('503') || errorMessage.includes('502')) {
+    return t.serverError;
+  } else if (errorMessage.includes('request') || errorMessage.includes('400')) {
+    return t.invalidRequest;
+  } else {
+    return t.default;
+  }
+};
+
 function App() {
   const { t, language } = useLanguage()
   
@@ -45,7 +100,7 @@ function App() {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<GenerationResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<DetailedError | string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
   const [sharedImageUrl, setSharedImageUrl] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -264,8 +319,38 @@ function App() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json() as { error?: string }
-        throw new Error(errorData.error || t.errorFailedToProcess)
+        let errorData: any
+        try {
+          errorData = await response.json()
+        } catch {
+          errorData = { error: 'Failed to parse error response' }
+        }
+
+        // Create detailed error object
+        const detailedError: DetailedError = {
+          userMessage: getUserFriendlyErrorMessage(errorData.error || t.errorFailedToProcess, language),
+          technicalDetails: {
+            error: errorData.error || 'Unknown error',
+            details: errorData.details || 'No additional details available',
+            timestamp: errorData.timestamp || new Date().toISOString(),
+            requestInfo: errorData.requestInfo || {
+              language: language,
+              hasDate: !!selectedDate,
+              hasPrompt: !!prompt.trim()
+            },
+            httpStatus: response.status,
+            httpHeaders: (() => {
+              const headers: Record<string, string> = {}
+              response.headers.forEach((value, key) => {
+                headers[key] = value
+              })
+              return headers
+            })()
+          }
+        }
+
+        setError(detailedError)
+        return
       }
 
       const rawHtmlContent = await response.text()
@@ -278,7 +363,24 @@ function App() {
       
     } catch (err) {
       console.error('Error processing request:', err)
-      setError(err instanceof Error ? err.message : t.errorUnknown)
+      const errorMessage = err instanceof Error ? err.message : t.errorUnknown
+      
+      // If it's not already a DetailedError, create a simple error
+      const simpleError: DetailedError = {
+        userMessage: getUserFriendlyErrorMessage(errorMessage, language),
+        technicalDetails: {
+          error: errorMessage,
+          details: err instanceof Error ? err.stack || 'No stack trace available' : 'Unknown error type',
+          timestamp: new Date().toISOString(),
+          requestInfo: {
+            language: language,
+            hasDate: !!selectedDate,
+            hasPrompt: !!prompt.trim()
+          },
+          httpStatus: 0
+        }
+      }
+      setError(simpleError)
     } finally {
       setIsLoading(false)
     }
