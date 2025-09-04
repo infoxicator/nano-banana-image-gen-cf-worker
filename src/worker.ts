@@ -5,6 +5,33 @@ export interface Env {
   R2_BUCKET: R2Bucket;
 }
 
+// Helper function for retry logic with exponential backoff
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (attempt === maxRetries - 1) {
+        throw lastError;
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.warn(`Attempt ${attempt + 1} failed, retrying in ${delay}ms:`, error);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError!;
+}
+
 // Import built static files
 import staticFiles from './static-files';
 
@@ -185,32 +212,45 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
   
   // Handle image generation API
   if ((url.pathname === '/api/generate' || url.pathname === '/generate') && request.method === 'POST') {
+    let language: string = 'en';
+    let date: string | null = null;
+    let prompt: string | null = null;
+    
     try {
       const contentType = request.headers.get('content-type') || '';
       
       let imageFile: File | null = null;
-      let prompt: string | null = null;
       
       // Handle JSON input with image URL
       if (contentType.includes('application/json')) {
-        const body = await request.json() as { imageUrl?: string; prompt?: string };
+        const body = await request.json() as { 
+          imageUrl?: string; 
+          prompt?: string; 
+          language?: string;
+          date?: string;
+        };
         
-        if (!body.imageUrl || !body.prompt) {
+        if (!body.imageUrl) {
           return Response.json(
-            { error: "Missing imageUrl or prompt in JSON body" },
+            { error: "Missing imageUrl in JSON body" },
             { status: 400 }
           );
         }
         
         // Fetch image from URL and convert to File
         imageFile = await fetchImageFromUrl(body.imageUrl);
-        prompt = body.prompt;
+        prompt = body.prompt || '';
+        language = body.language || 'en';
+        date = body.date || null;
       }
       // Handle multipart form data (existing behavior)
       else if (contentType.includes('multipart/form-data')) {
         const formData = await request.formData();
         imageFile = formData.get("image") as File | null;
-        prompt = formData.get("prompt") as string | null;
+        prompt = formData.get("prompt") as string | null || '';
+        const langParam = formData.get("language") as string | null;
+        language = (langParam && ['en', 'es'].includes(langParam)) ? langParam : 'en';
+        date = formData.get("date") as string | null;
       }
       else {
         return Response.json(
@@ -219,9 +259,9 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         );
       }
       
-      if (!imageFile || !prompt) {
+      if (!imageFile) {
         return Response.json(
-          { error: "Missing image file or prompt" },
+          { error: "Missing image file" },
           { status: 400 }
         );
       }
@@ -240,6 +280,14 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         apiKey: env.GOOGLE_API_KEY,
       });
       
+      console.log(`Generating newspaper in ${language} for request:`, {
+        hasImage: !!imageFile,
+        imageType: imageFile?.type,
+        promptLength: prompt.length,
+        date: date,
+        language: language
+      });
+      
       // Prepare the prompt with image and text
       const promptData = [
         { text: prompt },
@@ -251,55 +299,50 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         },
       ];
       
-      // Generate content using Gemini
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-image-preview",
-        contents: promptData as Content[],
+      // Generate content using Gemini with retry logic
+      const response = await retryWithBackoff(async () => {
+        return await ai.models.generateContent({
+          model: "gemini-2.5-flash-image-preview",
+          contents: promptData as Content[],
+        });
       });
       
-      // Process the response
+      console.log('Gemini response structure:', {
+        hasCandidates: !!response.candidates,
+        candidatesLength: response.candidates?.length || 0,
+        firstCandidate: response.candidates?.[0] ? {
+          hasContent: !!response.candidates[0].content,
+          partsLength: response.candidates[0].content?.parts?.length || 0,
+          finishReason: response.candidates[0].finishReason
+        } : null
+      });
+      
+      // Enhanced response validation and debugging
       if (!response.candidates || response.candidates.length === 0) {
-        throw new Error("No response generated from Gemini API");
+        console.error('No candidates in Gemini response:', response);
+        throw new Error("No response generated from Gemini API - no candidates returned");
       }
       
       const candidate = response.candidates[0];
-      if (!candidate || !candidate.content || !candidate.content.parts) {
-        throw new Error("Invalid response structure from Gemini API");
+      if (!candidate) {
+        console.error('First candidate is null/undefined:', response);
+        throw new Error("Invalid response structure from Gemini API - candidate is null");
       }
       
-      // Look for generated image in response
+      if (!candidate.content) {
+        console.error('Candidate has no content:', candidate);
+        throw new Error("Invalid response structure from Gemini API - no content in candidate");
+      }
+      
+      if (!candidate.content.parts || candidate.content.parts.length === 0) {
+        console.error('Candidate content has no parts:', candidate.content);
+        throw new Error("Invalid response structure from Gemini API - no parts in content");
+      }
+      
+      // Look for text response (HTML newspaper)
       for (const part of candidate.content.parts) {
         if (part.inlineData && part.inlineData.data) {
-          // Generate unique filename
-          const timestamp = Date.now();
-          const filename = `generated-${timestamp}.png`;
           
-          // // Upload to R2
-          // try {
-          //   await env.R2_BUCKET.put(filename, part.inlineData.data, {
-          //     httpMetadata: {
-          //       contentType: part.inlineData.mimeType || "image/png"
-          //     }
-          //   });
-            
-          //   // Return success with R2 URL
-          //   return Response.json({
-          //     success: true,
-          //     imageData: part.inlineData.data,
-          //     mimeType: part.inlineData.mimeType || "image/png",
-          //     r2Url: filename,
-          //     message: "Image generated and saved to R2"
-          //   });
-          // } catch (r2Error) {
-          //   console.error("R2 upload failed:", r2Error);
-          //   // Still return the image data even if R2 upload fails
-          //   return Response.json({
-          //     success: true,
-          //     imageData: part.inlineData.data,
-          //     mimeType: part.inlineData.mimeType || "image/png",
-          //     warning: "Image generated but R2 upload failed"
-          //   });
-          // }
           return Response.json({
             success: true,
             imageData: part.inlineData.data,
@@ -308,24 +351,53 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         }
       }
       
-      // If no image found, return text response if available
-      for (const part of candidate.content.parts) {
-        if (part.text) {
-          return Response.json({
-            error: "No image generated. Text response: " + part.text
-          }, { status: 400 });
-        }
-      }
+      // If no text found, log all parts for debugging
+      console.error('No text content found in any part:', candidate.content.parts.map(part => ({
+        hasText: !!part.text,
+        hasInlineData: !!part.inlineData,
+        textPreview: part.text
+      })));
       
-      throw new Error("No image or text generated in response");
+      throw new Error("No inline image content generated in response");
       
     } catch (error) {
       console.error("Error generating image:", error);
+      
+      // Provide more specific error messages based on error type
+      let errorMessage = "Unknown error occurred";
+      let statusCode = 500;
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Handle specific error types
+        if (error.message.includes('No response generated')) {
+          errorMessage = "The AI service did not generate any content. Please try again.";
+          statusCode = 503; // Service Unavailable
+        } else if (error.message.includes('Invalid response structure')) {
+          errorMessage = "The AI service returned an unexpected response format. Please try again.";
+          statusCode = 502; // Bad Gateway
+        } else if (error.message.includes('No HTML content generated')) {
+          errorMessage = "The AI service could not generate content. Please try with a different image or prompt.";
+          statusCode = 422; // Unprocessable Entity
+        } else if (error.message.includes('fetch')) {
+          errorMessage = "Failed to fetch the uploaded image. Please check the image URL.";
+          statusCode = 400; // Bad Request
+        }
+      }
+      
       return Response.json(
         { 
-          error: error instanceof Error ? error.message : "Unknown error occurred" 
+          error: errorMessage,
+          details: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString(),
+          requestInfo: {
+            language: language || 'unknown',
+            hasDate: !!date,
+            hasPrompt: !!(prompt && prompt.length > 0)
+          }
         },
-        { status: 500 }
+        { status: statusCode }
       );
     }
   }

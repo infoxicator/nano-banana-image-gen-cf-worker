@@ -37,7 +37,7 @@ const sanitizeHtmlContent = (htmlString: string): string => {
 };
 
 function App() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('')
@@ -258,7 +258,8 @@ function App() {
         body: JSON.stringify({
           imageUrl: uploadedImageUrl,
           prompt: prompt.trim() || '',
-          date: selectedDate
+          date: selectedDate,
+          language: language
         })
       })
 
