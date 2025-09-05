@@ -5,14 +5,14 @@ export const en = {
   
   // Instructions
   instructionsTitle: "How This Time Machine Works:",
-  step1Title: "Choose Your Date:",
-  step1Description: "Select any month and day from history. This will be your destination in time - the exact moment you'll experience through your photograph.",
-  step2Title: "Upload Your Photograph:",
-  step2Description: "Share any image that holds meaning for you. Our AI will transport this image back to your chosen historical date, reimagining how it would appear in that era.",
-  step3Title: "Add Context (Optional):",
-  step3Description: "Describe any specific historical elements, atmosphere, or details you'd like to see incorporated into your time-traveled image.",
-  step4Title: "Begin Your Journey:",
-  step4Description: "Click the time travel button and watch as your modern photograph transforms into a historical scene from your chosen date.",
+  step1Title: "Pick Your Time Destination:",
+  step1Description: "Choose any month and day from history. This becomes your time travel destination - the AI will create a historical newspaper based on your chosen date.",
+  step2Title: "Capture or Upload Your Photo:",
+  step2Description: "Take a selfie or upload any meaningful image. Our AI will make you the star of a historical newspaper from your chosen era!",
+  step3Title: "Add Your Style Twist (Optional):",
+  step3Description: "Want a vintage sepia look? Ghibli animation style? Polaroid aesthetic? Add your creative style preferences to customize the experience.",
+  step4Title: "Travel Back in Time:",
+  step4Description: "Hit the time travel button and watch as your photo becomes the centerpiece of an authentic historical newspaper!",
   
   // Month names
   months: {

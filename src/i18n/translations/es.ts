@@ -7,14 +7,14 @@ export const es: TranslationKeys = {
   
   // Instructions
   instructionsTitle: "Cómo Funciona Esta Máquina del Tiempo:",
-  step1Title: "Elige Tu Fecha:",
-  step1Description: "Selecciona cualquier mes y día de la historia. Este será tu destino en el tiempo - el momento exacto que experimentarás a través de tu fotografía.",
-  step2Title: "Sube Tu Fotografía:",
-  step2Description: "Comparte cualquier imagen que tenga significado para ti. Nuestra IA transportará esta imagen de vuelta a tu fecha histórica elegida, reimaginándola como habría aparecido en esa época.",
-  step3Title: "Añade Contexto (Opcional):",
-  step3Description: "Describe cualquier elemento histórico específico, atmósfera o detalles que te gustaría ver incorporados en tu imagen viajada en el tiempo.",
-  step4Title: "Comienza Tu Viaje:",
-  step4Description: "Haz clic en el botón de viaje en el tiempo y observa cómo tu fotografía moderna se transforma en una escena histórica de tu fecha elegida.",
+  step1Title: "Elige Tu Destino en el Tiempo:",
+  step1Description: "Selecciona cualquier mes y día de la historia. Este será tu destino temporal - la IA creará un periódico histórico basado en tu fecha elegida.",
+  step2Title: "Tómate una Foto o Sube una Imagen:",
+  step2Description: "Hazte una selfie o sube cualquier imagen significativa. ¡Nuestra IA te convertirá en la estrella de un periódico histórico de tu época elegida!",
+  step3Title: "Añade Tu Toque de Estilo (Opcional):",
+  step3Description: "¿Quieres un look sepia vintage? ¿Estilo de animación Ghibli? ¿Estética polaroid? Añade tus preferencias creativas de estilo para personalizar la experiencia.",
+  step4Title: "Viaja al Pasado:",
+  step4Description: "¡Presiona el botón de viaje en el tiempo y observa cómo tu foto se convierte en la pieza central de un auténtico periódico histórico!",
   
   // Month names
   months: {
