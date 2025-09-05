@@ -35,15 +35,15 @@ export const en = {
   datePickerMonthPlaceholder: "Choose month",
   datePickerDayPlaceholder: "Choose day",
   
-  imageUploadLabel: "Upload your photograph:",
+  imageUploadLabel: "Take a selfie or upload an image:",
   imageUploadInstruction: "Click to upload or drag and drop your image",
   imageUploading: "Uploading image...",
   imageUploadError: "Failed to upload image. Please try again.",
   imageSelected: "Selected",
   imageUploadSuccess: "Image uploaded successfully!",
   
-  promptLabel: "Additional context (optional):",
-  promptPlaceholder: "Describe any specific details you'd like to see in your historical journey...",
+  promptLabel: "Style preferences (optional):",
+  promptPlaceholder: "Enter a style like 'Ghibli', 'polaroid', 'black and white', 'vintage sepia', 'oil painting'...",
   charactersLabel: "characters",
   
   // Buttons
@@ -85,7 +85,12 @@ export const en = {
   // Language toggle
   language: "Language",
   languageEnglish: "English",
-  languageSpanish: "Spanish"
+  languageSpanish: "Spanish",
+  
+  // For Nerds section
+  forNerdsTitle: "For Nerds",
+  forNerdsDescription: "Built with Cloudflare Workers, React, and Gemini AI",
+  forNerdsWatchVideo: "Watch how it's built"
 };
 
 export type TranslationKeys = typeof en;

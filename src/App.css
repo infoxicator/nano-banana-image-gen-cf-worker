@@ -623,6 +623,122 @@ body {
   font-size: 0.8rem;
 }
 
+/* For Nerds Section */
+.for-nerds {
+  margin-top: 60px;
+  padding: 20px 0;
+  border-top: 1px solid #ddd;
+  text-align: center;
+}
+
+.for-nerds-toggle {
+  background: none;
+  border: 2px dashed #666;
+  color: #666;
+  padding: 12px 20px;
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  margin: 0 auto;
+  display: inline-block;
+}
+
+.for-nerds-toggle:hover {
+  border-color: #333;
+  color: #333;
+  background: rgba(51, 51, 51, 0.05);
+}
+
+.for-nerds-content {
+  margin-top: 20px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 25px;
+  font-family: 'Crimson Text', serif;
+}
+
+.for-nerds-description {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 20px;
+  text-align: center;
+  font-style: italic;
+}
+
+.for-nerds-video {
+  margin-bottom: 25px;
+}
+
+.video-label {
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 1rem;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+}
+
+.tech-details {
+  margin-top: 20px;
+}
+
+.tech-details h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tech-details ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tech-details li {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.tech-details li:last-child {
+  border-bottom: none;
+}
+
+.tech-details strong {
+  color: #333;
+  font-weight: 700;
+}
+
 .result {
   margin-top: 40px;
   border: 4px double #333;
@@ -665,6 +781,15 @@ body {
   padding: 20px;
   border: none;
   display: block;
+}
+
+/* Fix image aspect ratio in generated content */
+.generated-html img {
+  max-width: 100% !important;
+  height: auto !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin: 0 auto !important;
 }
 
 /* Download Section */
@@ -898,6 +1023,30 @@ body {
     height: auto !important;
     display: block !important;
     margin: 0.5em auto !important;
+  }
+  
+  .for-nerds {
+    margin-top: 40px;
+    padding: 15px;
+  }
+  
+  .for-nerds-toggle {
+    font-size: 0.9rem;
+    padding: 10px 16px;
+  }
+  
+  .for-nerds-content {
+    padding: 20px 15px;
+    margin-top: 15px;
+  }
+  
+  .tech-details h4 {
+    font-size: 1.1rem;
+  }
+  
+  .tech-details li {
+    font-size: 0.9rem;
+    padding: 6px 0;
   }
   
   .generated-html table {

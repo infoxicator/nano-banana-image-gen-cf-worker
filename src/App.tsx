@@ -6,6 +6,7 @@ import MonthDayPicker from './components/MonthDayPicker'
 import LoadingSpinner from './components/LoadingSpinner'
 import ErrorMessage from './components/ErrorMessage'
 import LanguageToggle from './components/LanguageToggle'
+import ForNerds from './components/ForNerds'
 import { useLanguage } from './i18n'
 import './App.css'
 
@@ -139,6 +140,10 @@ function App() {
         useCORS: true,
         allowTaint: true,
         logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: htmlContentRef.current.scrollWidth,
+        windowHeight: htmlContentRef.current.scrollHeight,
       })
 
       // Convert canvas to blob
@@ -183,6 +188,10 @@ function App() {
         useCORS: true,
         allowTaint: true,
         logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: htmlContentRef.current.scrollWidth,
+        windowHeight: htmlContentRef.current.scrollHeight,
       })
 
       // Convert canvas to blob
@@ -529,6 +538,8 @@ function App() {
             </div>
           </div>
         )}
+        
+        <ForNerds />
       </div>
     </div>
   )

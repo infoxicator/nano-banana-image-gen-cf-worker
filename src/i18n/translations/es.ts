@@ -37,15 +37,15 @@ export const es: TranslationKeys = {
   datePickerMonthPlaceholder: "Elegir mes",
   datePickerDayPlaceholder: "Elegir día",
   
-  imageUploadLabel: "Sube tu fotografía:",
+  imageUploadLabel: "Tómate una selfie o sube una imagen:",
   imageUploadInstruction: "Haz clic para subir o arrastra y suelta tu imagen",
   imageUploading: "Subiendo imagen...",
   imageUploadError: "Error al subir la imagen. Por favor, intenta de nuevo.",
   imageSelected: "Seleccionado",
   imageUploadSuccess: "¡Imagen subida exitosamente!",
   
-  promptLabel: "Contexto adicional (opcional):",
-  promptPlaceholder: "Describe cualquier detalle específico que te gustaría ver en tu viaje histórico...",
+  promptLabel: "Preferencias de estilo (opcional):",
+  promptPlaceholder: "Ingresa un estilo como 'Ghibli', 'polaroid', 'blanco y negro', 'sepia vintage', 'pintura al óleo'...",
   charactersLabel: "caracteres",
   
   // Buttons
@@ -87,5 +87,10 @@ export const es: TranslationKeys = {
   // Language toggle
   language: "Idioma",
   languageEnglish: "Inglés",
-  languageSpanish: "Español"
+  languageSpanish: "Español",
+  
+  // For Nerds section
+  forNerdsTitle: "Para Nerds",
+  forNerdsDescription: "Construido con Cloudflare Workers, React, y Gemini AI",
+  forNerdsWatchVideo: "Ver cómo está construido"
 };
