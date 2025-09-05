@@ -781,6 +781,15 @@ body {
   padding: 20px;
   border: none;
   display: block;
+  box-sizing: border-box;
+}
+
+/* Container for the generated newspaper */
+.html-content-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
 }
 
 /* Fix image aspect ratio in generated content */

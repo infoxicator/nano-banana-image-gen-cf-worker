@@ -134,6 +134,27 @@ function App() {
 
     setIsDownloading(true)
     try {
+      // Temporarily apply export-specific styles
+      const originalStyle = htmlContentRef.current.style.cssText
+      const originalContainerStyle = htmlContentRef.current.parentElement?.style.cssText || ''
+      
+      // Apply fixed dimensions for export
+      htmlContentRef.current.style.cssText += `
+        width: 800px !important;
+        min-height: 600px !important;
+        max-width: none !important;
+        position: relative !important;
+        box-sizing: border-box !important;
+      `
+      
+      if (htmlContentRef.current.parentElement) {
+        htmlContentRef.current.parentElement.style.cssText += `
+          width: 800px !important;
+          max-width: none !important;
+          overflow: visible !important;
+        `
+      }
+      
       const canvas = await html2canvas(htmlContentRef.current, {
         backgroundColor: '#ffffff',
         scale: 2, // Higher quality
@@ -142,9 +163,13 @@ function App() {
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: htmlContentRef.current.scrollWidth,
-        windowHeight: htmlContentRef.current.scrollHeight,
       })
+      
+      // Restore original styles
+      htmlContentRef.current.style.cssText = originalStyle
+      if (htmlContentRef.current.parentElement) {
+        htmlContentRef.current.parentElement.style.cssText = originalContainerStyle
+      }
 
       // Convert canvas to blob
       canvas.toBlob((blob) => {
@@ -181,6 +206,27 @@ function App() {
 
     setIsUploading(true)
     try {
+      // Temporarily apply export-specific styles
+      const originalStyle = htmlContentRef.current.style.cssText
+      const originalContainerStyle = htmlContentRef.current.parentElement?.style.cssText || ''
+      
+      // Apply fixed dimensions for export
+      htmlContentRef.current.style.cssText += `
+        width: 800px !important;
+        min-height: 600px !important;
+        max-width: none !important;
+        position: relative !important;
+        box-sizing: border-box !important;
+      `
+      
+      if (htmlContentRef.current.parentElement) {
+        htmlContentRef.current.parentElement.style.cssText += `
+          width: 800px !important;
+          max-width: none !important;
+          overflow: visible !important;
+        `
+      }
+      
       // Generate image using html2canvas
       const canvas = await html2canvas(htmlContentRef.current, {
         backgroundColor: '#ffffff',
@@ -190,9 +236,13 @@ function App() {
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: htmlContentRef.current.scrollWidth,
-        windowHeight: htmlContentRef.current.scrollHeight,
       })
+      
+      // Restore original styles
+      htmlContentRef.current.style.cssText = originalStyle
+      if (htmlContentRef.current.parentElement) {
+        htmlContentRef.current.parentElement.style.cssText = originalContainerStyle
+      }
 
       // Convert canvas to blob
       return new Promise((resolve) => {
