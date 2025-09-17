@@ -3,6 +3,7 @@ import { GoogleGenAI, Content } from "@google/genai";
 export interface Env {
   GOOGLE_API_KEY: string;
   R2_BUCKET: R2Bucket;
+  PAYLOAD_STORE: DurableObjectNamespace;
 }
 
 // Helper function for retry logic with exponential backoff
@@ -56,6 +57,109 @@ async function fileToBase64Data(file: File): Promise<{ data: string; mimeType: s
     data: btoa(binary),
     mimeType: file.type || "image/png",
   };
+}
+
+export class PayloadStore {
+  private readonly state: DurableObjectState;
+  private readonly schemaReady: Promise<void>;
+
+  constructor(state: DurableObjectState) {
+    this.state = state;
+    this.schemaReady = this.initializeSchema();
+  }
+
+  private async initializeSchema(): Promise<void> {
+    this.state.storage.sql.exec(
+      'CREATE TABLE IF NOT EXISTS payloads (id TEXT PRIMARY KEY, data TEXT NOT NULL)'
+    );
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    await this.schemaReady;
+    const url = new URL(request.url);
+    const segments = url.pathname.split('/').filter(Boolean);
+
+    if (segments[0] !== 'data') {
+      return new Response('Not Found', { status: 404 });
+    }
+
+    const recordId = segments[1];
+    if (!recordId) {
+      return Response.json({ error: 'Record id is required' }, { status: 400 });
+    }
+
+    if (request.method === 'PUT') {
+      const contentType = request.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return Response.json({ error: 'Content-Type must be application/json' }, { status: 400 });
+      }
+
+      let payload: unknown;
+      try {
+        payload = await request.json();
+      } catch {
+        return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+      }
+
+      let serialized: string;
+      try {
+        serialized = JSON.stringify(payload);
+      } catch {
+        return Response.json(
+          { error: 'Payload must be JSON serializable' },
+          { status: 400 },
+        );
+      }
+
+      try {
+        this.state.storage.sql.exec(
+          'INSERT INTO payloads (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
+          recordId,
+          serialized,
+        );
+        return Response.json({ success: true });
+      } catch (error) {
+        console.error('Failed to store payload in Durable Object:', error);
+        return Response.json(
+          { error: 'Failed to store payload' },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (request.method === 'GET') {
+      try {
+        const rows = this.state.storage.sql
+          .exec<{ data: string | null }>('SELECT data FROM payloads WHERE id = ?', recordId)
+          .toArray();
+
+        if (rows.length === 0 || rows[0].data == null) {
+          return Response.json({ error: 'Not found' }, { status: 404 });
+        }
+
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(rows[0].data);
+        } catch (error) {
+          console.error('Failed to parse stored payload:', error);
+          return Response.json(
+            { error: 'Stored payload is corrupted' },
+            { status: 500 },
+          );
+        }
+
+        return Response.json(parsed);
+      } catch (error) {
+        console.error('Failed to retrieve payload from Durable Object:', error);
+        return Response.json(
+          { error: 'Failed to retrieve payload' },
+          { status: 500 },
+        );
+      }
+    }
+
+    return new Response('Not Found', { status: 404 });
+  }
 }
 
 // Import built static files
@@ -150,7 +254,101 @@ export default {
 
 async function handleApiRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
-  
+
+  if (url.pathname === '/api/payloads' && request.method === 'POST') {
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return Response.json(
+        { error: 'Content-Type must be application/json' },
+        { status: 400 },
+      );
+    }
+
+    let payload: unknown;
+    try {
+      payload = await request.json();
+    } catch {
+      return Response.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 },
+      );
+    }
+
+    const recordId = crypto.randomUUID();
+    const durableId = env.PAYLOAD_STORE.idFromName('payload-db');
+    const stub = env.PAYLOAD_STORE.get(durableId);
+    const stubResponse = await stub.fetch(`https://payload-store.internal/data/${recordId}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!stubResponse.ok) {
+      const errorText = await stubResponse.text();
+      return Response.json(
+        {
+          error: 'Failed to save payload',
+          details: errorText || undefined,
+        },
+        { status: 500 },
+      );
+    }
+
+    return Response.json(
+      {
+        id: recordId,
+        payload,
+      },
+      { status: 201 },
+    );
+  }
+
+  if (url.pathname.startsWith('/api/payloads/') && request.method === 'GET') {
+    const id = url.pathname.slice('/api/payloads/'.length);
+    if (!id) {
+      return Response.json(
+        { error: 'Payload id is required' },
+        { status: 400 },
+      );
+    }
+
+    const durableId = env.PAYLOAD_STORE.idFromName('payload-db');
+    const stub = env.PAYLOAD_STORE.get(durableId);
+    const stubResponse = await stub.fetch(`https://payload-store.internal/data/${id}`, {
+      method: 'GET',
+    });
+
+    if (stubResponse.status === 404) {
+      return Response.json(
+        { error: 'Payload not found' },
+        { status: 404 },
+      );
+    }
+
+    if (!stubResponse.ok) {
+      const errorText = await stubResponse.text();
+      return Response.json(
+        {
+          error: 'Failed to retrieve payload',
+          details: errorText || undefined,
+        },
+        { status: 500 },
+      );
+    }
+
+    let payloadResponse: unknown;
+    try {
+      payloadResponse = await stubResponse.json();
+    } catch {
+      return Response.json(
+        { error: 'Unexpected response from storage' },
+        { status: 500 },
+      );
+    }
+
+    return Response.json({ id, payload: payloadResponse });
+  }
+
   // New: batch text-to-image generation endpoint
   if (url.pathname === '/api/generate-batch' && request.method === 'POST') {
     try {

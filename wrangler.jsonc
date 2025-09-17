@@ -19,6 +19,20 @@
 			"binding": "R2_BUCKET",
 			"bucket_name": "nano-banana-flows"
 		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "PAYLOAD_STORE",
+				"class_name": "PayloadStore"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "payload-store-sqlite-v1",
+			"new_sqlite_classes": ["PayloadStore"]
+		}
 	]
 	/**
 	 * Smart Placement
