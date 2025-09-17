@@ -28,12 +28,57 @@ async function retryWithBackoff<T>(
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   throw lastError!;
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+async function fileToBase64Data(file: File): Promise<{ data: string; mimeType: string }> {
+  const arrayBuffer = await file.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(arrayBuffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return {
+    data: btoa(binary),
+    mimeType: file.type || "image/png",
+  };
 }
 
 // Import built static files
 import staticFiles from './static-files';
+
+// CORS helpers
+function getCorsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('Origin') || '*';
+  return {
+    'Access-Control-Allow-Origin': origin === 'null' ? '*' : origin,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+function withCors(response: Response, request: Request): Response {
+  const headers = new Headers(response.headers);
+  const cors = getCorsHeaders(request);
+  Object.entries(cors).forEach(([k, v]) => headers.set(k, v));
+  return new Response(response.body, { status: response.status, headers });
+}
 
 async function fetchImageFromUrl(imageUrl: string): Promise<File> {
   try {
@@ -83,7 +128,12 @@ export default {
     
     // Handle API routes
     if (url.pathname.startsWith('/api/') || url.pathname === '/generate') {
-      return handleApiRequest(request, env);
+      // Handle preflight
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: getCorsHeaders(request) });
+      }
+      const apiResp = await handleApiRequest(request, env);
+      return withCors(apiResp, request);
     }
     
     // Serve static files
@@ -100,6 +150,313 @@ export default {
 
 async function handleApiRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+  
+  // New: batch text-to-image generation endpoint
+  if (url.pathname === '/api/generate-batch' && request.method === 'POST') {
+    try {
+      const contentType = request.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return Response.json(
+          { error: 'Content-Type must be application/json' },
+          { status: 400 }
+        );
+      }
+
+      const body = await request.json() as {
+        prompts?: string[];
+        maxAttempts?: number;
+      };
+
+      if (!body.prompts || !Array.isArray(body.prompts) || body.prompts.length === 0) {
+        return Response.json(
+          { error: 'Body must include non-empty "prompts" array' },
+          { status: 400 }
+        );
+      }
+
+      const ai = new GoogleGenAI({ apiKey: env.GOOGLE_API_KEY });
+      const maxAttempts = Math.max(1, Math.min(5, body.maxAttempts ?? 3)); // default 3, clamp 1..5
+
+      // Run generations sequentially to avoid rate limiting; per-prompt retries
+      const urls: (string | null)[] = new Array(body.prompts.length).fill(null);
+      const errors: (string | null)[] = new Array(body.prompts.length).fill(null);
+
+      for (let i = 0; i < body.prompts.length; i++) {
+        const prompt = body.prompts[i];
+        if (typeof prompt !== 'string' || !prompt.trim()) {
+          errors[i] = `Invalid prompt at index ${i}`;
+          continue;
+        }
+
+        let attempt = 0;
+        while (attempt < maxAttempts && urls[i] === null) {
+          attempt++;
+          try {
+            // Generate the image with retry/backoff for transient API errors
+            const response = await retryWithBackoff(async () => {
+              return await ai.models.generateContent({
+                model: 'gemini-2.5-flash-image-preview',
+                contents: prompt,
+              });
+            });
+
+            if (!response.candidates?.length) {
+              throw new Error('No candidates returned');
+            }
+
+            const parts = response.candidates[0]?.content?.parts || [];
+            let imageData: string | null = null;
+            let mimeType: string = 'image/png';
+            for (const part of parts) {
+              if (part.inlineData?.data) {
+                imageData = part.inlineData.data;
+                if (part.inlineData.mimeType) mimeType = part.inlineData.mimeType;
+                break;
+              }
+            }
+
+            if (!imageData) {
+              throw new Error('No image data in response');
+            }
+
+            // Upload to R2
+            const arrayBuffer = base64ToArrayBuffer(imageData);
+            const timestamp = Date.now();
+            const rand = Math.random().toString(36).slice(2, 8);
+            const ext = mimeType.includes('png') ? 'png' : (mimeType.includes('jpeg') || mimeType.includes('jpg')) ? 'jpg' : 'png';
+            const key = `generated-${timestamp}-${i}-${rand}.${ext}`;
+
+            await env.R2_BUCKET.put(key, arrayBuffer, {
+              httpMetadata: {
+                contentType: mimeType,
+                cacheControl: 'public, max-age=31536000',
+              },
+            });
+
+            const publicUrl = `https://images.iwasthere.today/${key}`;
+            urls[i] = publicUrl;
+            errors[i] = null;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            errors[i] = `Attempt ${attempt}/${maxAttempts} failed: ${msg}`;
+            if (attempt < maxAttempts) {
+              // small linear delay to avoid hammering
+              await new Promise(r => setTimeout(r, 500 * attempt));
+            }
+          }
+        }
+      }
+
+      const successful = urls.filter(Boolean).length;
+      if (successful !== body.prompts.length) {
+        return Response.json(
+          {
+            success: false,
+            message: `Generated ${successful}/${body.prompts.length} images after ${maxAttempts} attempts per prompt`,
+            urls: urls.filter(Boolean),
+            errors,
+          },
+          { status: 502 }
+        );
+      }
+
+      return Response.json({ success: true, urls: urls as string[] });
+    } catch (error) {
+      console.error('Error in /api/generate-batch:', error);
+      return Response.json(
+        { error: error instanceof Error ? error.message : 'Batch generation failed' },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (url.pathname === '/api/combine-images' && request.method === 'POST') {
+    try {
+      const contentType = request.headers.get('content-type') || '';
+      const files: File[] = [];
+      let promptText: string | undefined;
+
+      if (contentType.includes('application/json')) {
+        const body = await request.json() as {
+          imageUrls?: string[];
+          prompt?: string;
+        };
+
+        const normalizedUrls = (body.imageUrls || [])
+          .filter((value): value is string => typeof value === 'string')
+          .map(url => url.trim())
+          .filter(url => url.length > 0);
+
+        if (normalizedUrls.length < 2) {
+          return Response.json(
+            { error: 'Request must include at least two imageUrls' },
+            { status: 400 }
+          );
+        }
+
+        const urlsToFetch = normalizedUrls.slice(0, 2);
+        const fetchedFiles = await Promise.all(urlsToFetch.map(fetchImageFromUrl));
+        files.push(...fetchedFiles);
+        promptText = body.prompt;
+      } else if (contentType.includes('multipart/form-data')) {
+        const formData = await request.formData();
+        const tentativeFiles: File[] = [];
+        const possibleFileFields = ['image1', 'image2', 'image', 'images'];
+
+        for (const field of possibleFileFields) {
+          const values = formData.getAll(field);
+          for (const value of values) {
+            if (value instanceof File && value.size > 0) {
+              tentativeFiles.push(value);
+            }
+          }
+        }
+
+        const selectedUploads = tentativeFiles.slice(0, 2);
+        files.push(...selectedUploads);
+
+        if (files.length < 2) {
+          const urlCandidates: string[] = [];
+          const singleUrlFields = ['imageUrl', 'imageUrl1', 'imageUrl2'];
+          for (const field of singleUrlFields) {
+            const value = formData.get(field);
+            if (typeof value === 'string' && value.trim()) {
+              urlCandidates.push(value.trim());
+            }
+          }
+
+          const listUrlValues = formData.getAll('imageUrls');
+          for (const value of listUrlValues) {
+            if (typeof value === 'string' && value.trim()) {
+              urlCandidates.push(value.trim());
+            }
+          }
+
+          if (urlCandidates.length > 0) {
+            const remainingSlots = 2 - files.length;
+            const urlsToFetch = urlCandidates.slice(0, remainingSlots);
+            const fetchedFiles = await Promise.all(urlsToFetch.map(fetchImageFromUrl));
+            files.push(...fetchedFiles);
+          }
+        }
+
+        if (files.length < 2) {
+          return Response.json(
+            { error: 'Provide at least two images via files or URLs' },
+            { status: 400 }
+          );
+        }
+
+        const promptValue = formData.get('prompt');
+        if (typeof promptValue === 'string' && promptValue.trim()) {
+          promptText = promptValue.trim();
+        }
+      } else {
+        return Response.json(
+          { error: 'Content-Type must be application/json or multipart/form-data' },
+          { status: 400 }
+        );
+      }
+
+      const [firstFile, secondFile] = files;
+      if (!firstFile || !secondFile) {
+        return Response.json(
+          { error: 'Two images are required to combine' },
+          { status: 400 }
+        );
+      }
+
+      const [firstImage, secondImage] = await Promise.all([
+        fileToBase64Data(firstFile),
+        fileToBase64Data(secondFile),
+      ]);
+
+      const prompt = (promptText && promptText.trim().length > 0)
+        ? promptText.trim()
+        : 'Combine these two inputs into a cohesive, professional composition.';
+
+      const ai = new GoogleGenAI({ apiKey: env.GOOGLE_API_KEY });
+
+      const contents: Content[] = [
+        {
+          inlineData: {
+            mimeType: firstImage.mimeType,
+            data: firstImage.data,
+          },
+        },
+        {
+          inlineData: {
+            mimeType: secondImage.mimeType,
+            data: secondImage.data,
+          },
+        },
+        { text: prompt },
+      ];
+
+      const response = await retryWithBackoff(async () => {
+        return await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image-preview',
+          contents,
+        });
+      });
+
+      if (!response.candidates || response.candidates.length === 0) {
+        throw new Error('No response generated from Gemini API');
+      }
+
+      const candidate = response.candidates[0];
+      const parts = candidate?.content?.parts || [];
+
+      let imageData: string | null = null;
+      let mimeType = 'image/png';
+      for (const part of parts) {
+        if (part.inlineData?.data) {
+          imageData = part.inlineData.data;
+          if (part.inlineData.mimeType) {
+            mimeType = part.inlineData.mimeType;
+          }
+          break;
+        }
+      }
+
+      if (!imageData) {
+        throw new Error('No inline image content generated in response');
+      }
+
+      const arrayBuffer = base64ToArrayBuffer(imageData);
+      const timestamp = Date.now();
+      const rand = Math.random().toString(36).slice(2, 8);
+      const extension = mimeType.includes('png')
+        ? 'png'
+        : mimeType.includes('jpeg') || mimeType.includes('jpg')
+          ? 'jpg'
+          : 'png';
+      const key = `combined-${timestamp}-${rand}.${extension}`;
+
+      await env.R2_BUCKET.put(key, arrayBuffer, {
+        httpMetadata: {
+          contentType: mimeType,
+          cacheControl: 'public, max-age=31536000',
+        },
+      });
+
+      const publicUrl = `https://images.iwasthere.today/${key}`;
+
+      return Response.json({
+        success: true,
+        imageData,
+        mimeType,
+        imageUrl: publicUrl,
+        promptUsed: prompt,
+      });
+    } catch (error) {
+      console.error('Error combining images:', error);
+      return Response.json(
+        { error: error instanceof Error ? error.message : 'Image combination failed' },
+        { status: 502 }
+      );
+    }
+  }
   
   // Handle generated image upload API for sharing
   if (url.pathname === '/api/upload-generated' && request.method === 'POST') {
