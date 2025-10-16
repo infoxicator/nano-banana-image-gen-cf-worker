@@ -96,7 +96,7 @@ function App() {
   const { t, language } = useLanguage()
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('')
+  const [, setUploadedImageUrl] = useState<string>('')
   const [prompt, setPrompt] = useState('')
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
@@ -353,7 +353,7 @@ function App() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!uploadedImageUrl || !selectedDate) {
+    if (!selectedFile || !selectedDate) {
       setError(t.errorSelectDateAndImage)
       return
     }
@@ -364,17 +364,16 @@ function App() {
     setSharedImageUrl(null) // Clear previous shared image URL
 
     try {
-      const response = await fetch('https://postman.flows.pstmn.io/api/default/nano-banana', {
+      const trimmedPrompt = prompt.trim()
+      const formData = new FormData()
+      formData.append('image', selectedFile, selectedFile.name)
+      formData.append('prompt', trimmedPrompt)
+      formData.append('date', selectedDate)
+      formData.append('language', language)
+
+      const response = await fetch('https://postman.flows.pstmn.io/api/default/iwastheretodayformdata', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageUrl: uploadedImageUrl,
-          prompt: prompt.trim() || '',
-          date: selectedDate,
-          language: language
-        })
+        body: formData
       })
 
       if (!response.ok) {
@@ -395,7 +394,7 @@ function App() {
             requestInfo: errorData.requestInfo || {
               language: language,
               hasDate: !!selectedDate,
-              hasPrompt: !!prompt.trim()
+              hasPrompt: !!trimmedPrompt
             },
             httpStatus: response.status,
             httpHeaders: (() => {
@@ -515,7 +514,7 @@ function App() {
             <button 
               type="submit" 
               className="newspaper-btn"
-              disabled={isLoading || !uploadedImageUrl || !selectedDate}
+              disabled={isLoading || !selectedFile || !selectedDate}
             >
               {isLoading ? t.submitButtonLoading : t.submitButton}
             </button>

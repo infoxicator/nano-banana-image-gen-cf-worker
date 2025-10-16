@@ -59,6 +59,210 @@ async function fileToBase64Data(file: File): Promise<{ data: string; mimeType: s
   };
 }
 
+interface NormalizedImageData {
+  buffer: ArrayBuffer;
+  mimeType: string;
+  filename: string;
+}
+
+const EXTENSION_TO_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  heic: "image/heic",
+  heif: "image/heif",
+  avif: "image/avif",
+  bmp: "image/bmp",
+  svg: "image/svg+xml",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+};
+
+const MIME_TO_EXTENSION: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
+  "image/avif": "avif",
+  "image/bmp": "bmp",
+  "image/svg+xml": "svg",
+  "image/tiff": "tiff",
+};
+
+function isBlobLike(value: unknown): value is Blob {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Blob).arrayBuffer === "function" &&
+    typeof (value as Blob).size === "number"
+  );
+}
+
+function getExtensionFromFilename(filename?: string): string | undefined {
+  if (!filename) {
+    return undefined;
+  }
+  const lastDot = filename.lastIndexOf(".");
+  if (lastDot === -1 || lastDot === filename.length - 1) {
+    return undefined;
+  }
+  return filename.slice(lastDot + 1).toLowerCase();
+}
+
+function guessMimeTypeFromFilename(filename?: string): string | undefined {
+  const ext = getExtensionFromFilename(filename);
+  if (!ext) {
+    return undefined;
+  }
+  return EXTENSION_TO_MIME[ext];
+}
+
+function getExtensionFromMimeType(mimeType?: string): string | undefined {
+  if (!mimeType) {
+    return undefined;
+  }
+  const normalized = mimeType.toLowerCase();
+  return MIME_TO_EXTENSION[normalized];
+}
+
+function getHeaderValue(headers: unknown, header: string): string | undefined {
+  if (!headers || typeof headers !== "object") {
+    return undefined;
+  }
+
+  const normalizedHeader = header.toLowerCase();
+  const headerRecord = headers as Record<string, unknown>;
+  const value =
+    headerRecord[header] ??
+    headerRecord[header.toLowerCase()] ??
+    headerRecord[normalizedHeader];
+
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return typeof first === "string" ? first : undefined;
+  }
+
+  return typeof value === "string" ? value : undefined;
+}
+
+function extractBase64AndMime(value: string): { base64: string; mimeTypeHint?: string } {
+  const trimmed = value.trim();
+  const dataUrlMatch = /^data:([^;]+);base64,(.+)$/i.exec(trimmed);
+
+  if (dataUrlMatch) {
+    const mime = dataUrlMatch[1];
+    const data = dataUrlMatch[2];
+    if (mime && data) {
+      return {
+        mimeTypeHint: mime,
+        base64: data,
+      };
+    }
+  }
+
+  return {
+    base64: trimmed.replace(/\s+/g, ""),
+  };
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+async function normalizeImageInput(imageInput: unknown): Promise<NormalizedImageData> {
+  if (imageInput == null) {
+    throw new Error("No image input provided");
+  }
+
+  if (typeof imageInput === "string") {
+    const trimmed = imageInput.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return normalizeImageInput(parsed);
+      } catch {
+        // Fall through and treat as base64 string.
+      }
+    }
+
+    const { base64, mimeTypeHint } = extractBase64AndMime(trimmed);
+    return {
+      buffer: base64ToArrayBuffer(base64),
+      mimeType: (mimeTypeHint && mimeTypeHint.startsWith("image/"))
+        ? mimeTypeHint
+        : "image/jpeg",
+      filename: "uploaded-image",
+    };
+  }
+
+  if (isBlobLike(imageInput)) {
+    const blob = imageInput as Blob;
+    const buffer = await blob.arrayBuffer();
+    const fileCandidate = blob as File;
+    const filename =
+      typeof fileCandidate.name === "string" && fileCandidate.name.length > 0
+        ? fileCandidate.name
+        : "uploaded-image";
+    const mimeType =
+      blob.type ||
+      guessMimeTypeFromFilename(filename) ||
+      "image/jpeg";
+
+    return {
+      buffer,
+      mimeType,
+      filename,
+    };
+  }
+
+  if (typeof imageInput === "object") {
+    const record = imageInput as Record<string, unknown>;
+
+    if ("image" in record) {
+      return normalizeImageInput(record.image);
+    }
+
+    if (typeof record.content === "string") {
+      const { base64, mimeTypeHint } = extractBase64AndMime(record.content);
+      const filename =
+        typeof record.filename === "string" && record.filename.length > 0
+          ? record.filename
+          : "uploaded-image";
+      const headerMime = getHeaderValue(record.headers, "Content-Type");
+      const mimeType =
+        (typeof record.mimeType === "string" && record.mimeType.length > 0
+          ? record.mimeType
+          : undefined) ||
+        headerMime ||
+        mimeTypeHint ||
+        guessMimeTypeFromFilename(filename) ||
+        "image/jpeg";
+
+      return {
+        buffer: base64ToArrayBuffer(base64),
+        mimeType,
+        filename,
+      };
+    }
+  }
+
+  throw new Error("Unsupported image input format");
+}
+
 export class PayloadStore {
   private readonly state: DurableObjectState;
   private readonly schemaReady: Promise<void>;
@@ -133,13 +337,14 @@ export class PayloadStore {
           .exec<{ data: string | null }>('SELECT data FROM payloads WHERE id = ?', recordId)
           .toArray();
 
-        if (rows.length === 0 || rows[0].data == null) {
+        const firstRow = rows[0];
+        if (!firstRow || firstRow.data == null) {
           return Response.json({ error: 'Not found' }, { status: 404 });
         }
 
         let parsed: unknown;
         try {
-          parsed = JSON.parse(rows[0].data);
+          parsed = JSON.parse(firstRow.data);
         } catch (error) {
           console.error('Failed to parse stored payload:', error);
           return Response.json(
@@ -577,18 +782,35 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
 
       const contents: Content[] = [
         {
-          inlineData: {
-            mimeType: firstImage.mimeType,
-            data: firstImage.data,
-          },
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                mimeType: firstImage.mimeType,
+                data: firstImage.data,
+              },
+            },
+          ],
         },
         {
-          inlineData: {
-            mimeType: secondImage.mimeType,
-            data: secondImage.data,
-          },
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                mimeType: secondImage.mimeType,
+                data: secondImage.data,
+              },
+            },
+          ],
         },
-        { text: prompt },
+        {
+          role: 'user',
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
       ];
 
       const response = await retryWithBackoff(async () => {
@@ -660,17 +882,28 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
   if (url.pathname === '/api/upload-generated' && request.method === 'POST') {
     try {
       const formData = await request.formData();
-      const imageFile = formData.get("image") as File | null;
-      
-      if (!imageFile) {
+      const imageEntry = formData.get("image");
+
+      if (!imageEntry) {
         return Response.json(
           { error: "No image file provided" },
           { status: 400 }
         );
       }
-      
+
+      let normalizedImage: NormalizedImageData;
+      try {
+        normalizedImage = await normalizeImageInput(imageEntry);
+      } catch (error) {
+        console.error("Failed to parse uploaded image payload", error);
+        return Response.json(
+          { error: "Invalid image file" },
+          { status: 400 }
+        );
+      }
+
       // Validate file type
-      if (!imageFile.type.startsWith('image/')) {
+      if (!normalizedImage.mimeType.toLowerCase().startsWith('image/')) {
         return Response.json(
           { error: "File must be an image" },
           { status: 400 }
@@ -680,14 +913,17 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
       // Generate unique filename for sharing
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      const extension = imageFile.name.split('.').pop() || 'png';
+      const originalExtension = getExtensionFromFilename(normalizedImage.filename);
+      const extension =
+        originalExtension ||
+        getExtensionFromMimeType(normalizedImage.mimeType) ||
+        'png';
       const filename = `my-ai-time-travel-newspaper-${timestamp}-${randomId}.${extension}`;
       
       // Upload to R2
-      const imageBuffer = await imageFile.arrayBuffer();
-      await env.R2_BUCKET.put(filename, imageBuffer, {
+      await env.R2_BUCKET.put(filename, normalizedImage.buffer, {
         httpMetadata: {
-          contentType: imageFile.type,
+          contentType: normalizedImage.mimeType,
           cacheControl: 'public, max-age=31536000', // Cache for 1 year
         }
       });
@@ -715,17 +951,28 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
   if (url.pathname === '/api/upload' && request.method === 'POST') {
     try {
       const formData = await request.formData();
-      const imageFile = formData.get("image") as File | null;
-      
-      if (!imageFile) {
+      const imageEntry = formData.get("image");
+
+      if (!imageEntry) {
         return Response.json(
           { error: "No image file provided" },
           { status: 400 }
         );
       }
       
+      let normalizedImage: NormalizedImageData;
+      try {
+        normalizedImage = await normalizeImageInput(imageEntry);
+      } catch (error) {
+        console.error("Failed to parse uploaded image payload", error);
+        return Response.json(
+          { error: "Invalid image file" },
+          { status: 400 }
+        );
+      }
+
       // Validate file type
-      if (!imageFile.type.startsWith('image/')) {
+      if (!normalizedImage.mimeType.toLowerCase().startsWith('image/')) {
         return Response.json(
           { error: "File must be an image" },
           { status: 400 }
@@ -734,14 +981,17 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
       
       // Generate unique filename
       const timestamp = Date.now();
-      const extension = imageFile.name.split('.').pop() || 'jpg';
+      const originalExtension = getExtensionFromFilename(normalizedImage.filename);
+      const extension =
+        originalExtension ||
+        getExtensionFromMimeType(normalizedImage.mimeType) ||
+        'jpg';
       const filename = `uploaded-${timestamp}.${extension}`;
       
       // Upload to R2
-      const imageBuffer = await imageFile.arrayBuffer();
-      await env.R2_BUCKET.put(filename, imageBuffer, {
+      await env.R2_BUCKET.put(filename, normalizedImage.buffer, {
         httpMetadata: {
-          contentType: imageFile.type
+          contentType: normalizedImage.mimeType
         }
       });
       
@@ -774,7 +1024,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
     try {
       const contentType = request.headers.get('content-type') || '';
       
-      let imageFile: File | null = null;
+      let imageInput: unknown = null;
       
       // Handle JSON input with image URL
       if (contentType.includes('application/json')) {
@@ -793,7 +1043,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         }
         
         // Fetch image from URL and convert to File
-        imageFile = await fetchImageFromUrl(body.imageUrl);
+        imageInput = await fetchImageFromUrl(body.imageUrl);
         prompt = body.prompt || '';
         language = body.language || 'en';
         date = body.date || null;
@@ -801,7 +1051,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
       // Handle multipart form data (existing behavior)
       else if (contentType.includes('multipart/form-data')) {
         const formData = await request.formData();
-        imageFile = formData.get("image") as File | null;
+        imageInput = formData.get("image");
         prompt = formData.get("prompt") as string | null || '';
         const langParam = formData.get("language") as string | null;
         language = (langParam && ['en', 'es'].includes(langParam)) ? langParam : 'en';
@@ -814,30 +1064,45 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         );
       }
       
-      if (!imageFile) {
+      if (!imageInput) {
         return Response.json(
           { error: "Missing image file" },
           { status: 400 }
         );
       }
+
+      let normalizedImage: NormalizedImageData;
+      try {
+        normalizedImage = await normalizeImageInput(imageInput);
+      } catch (error) {
+        console.error("Failed to normalize image input for generation", error);
+        return Response.json(
+          { error: "Invalid image file" },
+          { status: 400 }
+        );
+      }
+
+      console.log('imageFile from image upload API', {
+        providedType: typeof imageInput,
+        hasArrayBuffer: Boolean(
+          imageInput &&
+          typeof (imageInput as { arrayBuffer?: unknown }).arrayBuffer === "function"
+        ),
+        filename: normalizedImage.filename,
+        mimeType: normalizedImage.mimeType,
+        size: normalizedImage.buffer.byteLength,
+      });
       
       // Convert uploaded file to base64
-      const imageBuffer = await imageFile.arrayBuffer();
-      const base64Image = btoa(
-        new Uint8Array(imageBuffer).reduce(
-          (data, byte) => data + String.fromCharCode(byte),
-          ""
-        )
-      );
-      
+      const base64Image = arrayBufferToBase64(normalizedImage.buffer);
       // Initialize Gemini AI
       const ai = new GoogleGenAI({
         apiKey: env.GOOGLE_API_KEY,
       });
       
       console.log(`Generating newspaper in ${language} for request:`, {
-        hasImage: !!imageFile,
-        imageType: imageFile?.type,
+        hasImage: normalizedImage.buffer.byteLength > 0,
+        imageType: normalizedImage.mimeType,
         promptLength: prompt.length,
         date: date,
         language: language
@@ -848,7 +1113,7 @@ async function handleApiRequest(request: Request, env: Env): Promise<Response> {
         { text: prompt },
         {
           inlineData: {
-            mimeType: imageFile.type,
+            mimeType: normalizedImage.mimeType,
             data: base64Image,
           },
         },
