@@ -96,7 +96,6 @@ function App() {
   const { t, language } = useLanguage()
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [, setUploadedImageUrl] = useState<string>('')
   const [prompt, setPrompt] = useState('')
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
@@ -112,13 +111,6 @@ function App() {
     setSelectedFile(file)
     setResult(null)
     setError(null)
-    if (!file) {
-      setUploadedImageUrl('')
-    }
-  }
-
-  const handleImageUploaded = (imageUrl: string) => {
-    setUploadedImageUrl(imageUrl)
   }
 
   const handlePromptChange = (newPrompt: string) => {
@@ -498,7 +490,6 @@ function App() {
           <section className="image-section">
             <ImageUpload 
               onFileSelect={handleFileSelect}
-              onImageUploaded={handleImageUploaded}
               selectedFile={selectedFile}
             />
           </section>

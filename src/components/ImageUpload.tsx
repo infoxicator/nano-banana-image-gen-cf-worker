@@ -3,56 +3,37 @@ import { useLanguage } from '../i18n'
 
 interface ImageUploadProps {
   onFileSelect: (file: File | null) => void
-  onImageUploaded: (imageUrl: string) => void
   selectedFile: File | null
 }
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded, selectedFile }) => {
+const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, selectedFile }) => {
   const { t } = useLanguage()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
-  const uploadFile = async (file: File) => {
-    setIsUploading(true)
-    setUploadError(null)
-    setUploadedImageUrl(null)
-    
-    try {
-      const formData = new FormData()
-      formData.append('image', file)
-      
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json() as { error?: string }
-        throw new Error(errorData.error || t.errorFailedToUpload)
-      }
-      
-      const data = await response.json() as { imageUrl: string; success: boolean }
-      setUploadedImageUrl(data.imageUrl)
-      onImageUploaded(data.imageUrl)
-      
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : t.imageUploadError)
-    } finally {
-      setIsUploading(false)
+  const handleSelection = (file: File | null) => {
+    onFileSelect(file)
+
+    if (!file) {
+      setStatusMessage(null)
+      setUploadError(null)
+      return
     }
+
+    if (!file.type.startsWith('image/')) {
+      setStatusMessage(null)
+      setUploadError(t.imageUploadError)
+      return
+    }
+
+    setStatusMessage(t.imageUploadSuccess)
+    setUploadError(null)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
-    onFileSelect(file)
-    if (file) {
-      uploadFile(file)
-    } else {
-      setUploadedImageUrl(null)
-      setUploadError(null)
-    }
+    handleSelection(file)
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -63,13 +44,17 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded
     e.preventDefault()
     const file = e.dataTransfer.files?.[0] || null
     if (file && file.type.startsWith('image/')) {
-      onFileSelect(file)
-      uploadFile(file)
+      handleSelection(file)
       if (fileInputRef.current) {
         const dt = new DataTransfer()
         dt.items.add(file)
         fileInputRef.current.files = dt.files
       }
+    } else if (!file) {
+      handleSelection(null)
+    } else {
+      setStatusMessage(null)
+      setUploadError(t.imageUploadError)
     }
   }
 
@@ -97,16 +82,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onFileSelect, onImageUploaded
         <div className="file-drop-content">
           <div className="file-icon">📁</div>
           <p>
-            {isUploading 
-              ? t.imageUploading
-              : selectedFile 
-                ? `${t.imageSelected}: ${selectedFile.name}` 
-                : t.imageUploadInstruction
+            {selectedFile 
+              ? `${t.imageSelected}: ${selectedFile.name}` 
+              : t.imageUploadInstruction
             }
           </p>
-          {isUploading && <div className="upload-progress">⏳ {t.imageUploading}</div>}
           {uploadError && <div className="upload-error">❌ {uploadError}</div>}
-          {uploadedImageUrl && <div className="upload-success">✅ {t.imageUploadSuccess}</div>}
+          {statusMessage && !uploadError && <div className="upload-success">✅ {statusMessage}</div>}
         </div>
       </div>
       
